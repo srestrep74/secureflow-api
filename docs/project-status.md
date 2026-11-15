@@ -1,0 +1,11 @@
+# Project Status
+
+**Status: Phase 0 and Phase 1 approved; Phase 2 authorized.**
+
+2026-11-15: The user approved Phase 1 and authorized Phase 2. The Compose smoke test started PostgreSQL 17 and its health check reached `healthy`; the isolated test container, network and volume were removed afterward. This verifies Compose startup, not production configuration.
+
+2026-11-15: The user approved Phase 0 and ADR-0001 through ADR-0005 and authorized Phase 1 bootstrap. The original requirements file remains unchanged. Phase 1 foundation created with Java 25, Gradle 9.9.1, Spring Boot 4.0.9, PostgreSQL, Flyway and OpenAPI. The Gradle Wrapper resolved dependencies and `compileJava compileTestJava` passed. `gradlew.bat check --no-daemon` passed after the final changes: two integration tests started the web application with PostgreSQL Testcontainers, checked database connectivity and Flyway migration history, and verified health and enabled OpenAPI over HTTP. Production configuration remains unverified. No domain, authentication or authorization functionality has been implemented yet.
+
+Approved security-state design: PostgreSQL primary remains authoritative; use one indexed projection and a replaceable port, signed version-bound authority snapshots and atomic refresh rotation. Redis is a future option only. Documentation review does not establish query performance or transaction correctness; these require implementation and tests in the approved later phase.
+
+See the [consolidated Phase 0 design](phase-0-design.md) for the complete contract, trade-offs and approval gate.
