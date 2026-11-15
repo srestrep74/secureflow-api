@@ -277,3 +277,17 @@ These rules apply permanently to every future Codex session.
 Before committing any implementation task or marking a phase complete, Codex must run the formatting and verification workflow.
 
 A task or phase is not fully delivered until formatting, tests, documentation, and Conventional Commit requirements have been satisfied.
+
+## Approved Task Execution
+
+When a task is explicitly authorized for implementation:
+
+- Treat that authorization as permission to perform the scoped repository changes.
+- Complete the task through implementation, testing, documentation, and Conventional Commit.
+- Do not stop after a planning or repository-analysis step unless a genuine blocker prevents execution.
+- Resolve ordinary implementation decisions autonomously while respecting Accepted ADRs and architectural boundaries.
+- Do not repeatedly request approval for the same task.
+- Do not interpret phase boundaries as permission to abandon the currently approved task.
+- Report a task as completed only when its acceptance criteria have been verified.
+- If an environmental or permission restriction prevents implementation, identify the exact restriction.
+- Never bypass tool permissions, security controls, or explicit user restrictions.
