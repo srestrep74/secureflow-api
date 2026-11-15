@@ -34,7 +34,7 @@ The stateless security chain permits POST login only when JWT is enabled. The co
 
 ## Phase 5.4B HTTP bearer integration
 
-The opt-in Resource Server extracts Bearer tokens and authenticates each request through JwtAuthenticationProvider and the configured NimbusJwtDecoder. After claims validation, StatefulJwtAuthenticationConverter invokes SecurityStateValidator before constructing authentication. The SecurityContext is request-bound and stateless; no HTTP session is created. Database unavailability is 503, invalid token or current state is 401, and insufficient authority is 403. Refresh and logout remain deferred.
+The opt-in Resource Server extracts Bearer tokens and authenticates each request through JwtAuthenticationProvider and the configured NimbusJwtDecoder. After claims validation, StatefulJwtAuthenticationConverter invokes SecurityStateValidator before constructing authentication. The SecurityContext is request-bound and stateless; no HTTP session is created. Database unavailability is 503, invalid token or current state is 401, and insufficient authority is 403. At that phase, refresh and logout remained deferred.
 
 ## Phase 5.5A refresh rotation
 
@@ -50,4 +50,8 @@ The controller delegates without an encompassing transaction. Rotation consumes 
 
 The application accepts a trusted user and family identity, never a public client-selected session. A new transaction locks the user row then the owned family row and reloads family state before revoking it. A missing user, foreign or missing family, invalid input or inactive unrevoked family is an invalid context; an already revoked owned family succeeds without a write. Database and commit failures are unavailable outcomes. The transaction commits before completion is returned. No credentials, roles, security version, expiration, or other families are changed.
 
-Refresh follows the same lock order. If logout commits first, refresh rejects the revoked family; if refresh commits first, logout revokes the same family including its successor. Existing online checks reject access JWTs after the revocation commits; previously authenticated requests may finish. Phase 5.6B must derive the trusted identities from the authenticated principal and expose the HTTP contract.
+Refresh follows the same lock order. If logout commits first, refresh rejects the revoked family; if refresh commits first, logout revokes the same family including its successor. Existing online checks reject access JWTs after the revocation commits; previously authenticated requests may finish. Phase 5.6B subsequently exposes this behavior over HTTP.
+
+## Phase 5.6B: HTTP logout lifecycle
+
+The Resource Server validates the access JWT and current PostgreSQL security state before the infrastructure context adapter extracts `sub` and `sid` from the authenticated JWT. The controller passes the resulting application command to the existing transactional use case. Its user-then-family locks serialize logout with refresh, and the response follows successful commit. A revoked family invalidates its access and refresh credentials on subsequent requests; other families, user status, roles and security version are unchanged. A request already authenticated before commit may finish. Spring Security clears its request-bound context through its normal stateless lifecycle; clearing that context alone would not revoke persistent credentials. Clients must discard both local tokens. Application idempotency does not permit a second HTTP call with a revoked JWT: authentication rejects it with 401.

@@ -172,4 +172,16 @@ class RegistrationHttpIntegrationTest {
                         .build(),
                 HttpResponse.BodyHandlers.ofString());
     }
+
+    @Test
+    void logoutRemainsDeniedWhenJwtIsDisabled() throws Exception {
+        try (var client = HttpClient.newHttpClient()) {
+            var request = HttpRequest.newBuilder(URI.create("http://localhost:" + port + "/api/v1/auth/logout"))
+                    .POST(HttpRequest.BodyPublishers.noBody())
+                    .build();
+            var response = client.send(request, HttpResponse.BodyHandlers.ofString());
+            assertThat(response.statusCode()).isIn(401, 403);
+            assertThat(response.headers().firstValue("set-cookie")).isEmpty();
+        }
+    }
 }

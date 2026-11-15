@@ -2,7 +2,9 @@ package com.secureflow.identity.web;
 
 import com.secureflow.identity.application.AuthenticationUnavailableException;
 import com.secureflow.identity.application.InvalidCredentialsException;
+import com.secureflow.identity.application.InvalidLogoutContextException;
 import com.secureflow.identity.application.InvalidRefreshTokenException;
+import com.secureflow.identity.application.LogoutUnavailableException;
 import com.secureflow.identity.application.RefreshReplayException;
 import com.secureflow.identity.application.RefreshUnavailableException;
 import com.secureflow.shared.application.IntegrityConflictException;
@@ -70,8 +72,24 @@ class RegistrationErrors {
         return problem(HttpStatus.SERVICE_UNAVAILABLE, "Service temporarily unavailable");
     }
 
+    @ExceptionHandler(InvalidLogoutContextException.class)
+    org.springframework.http.ResponseEntity<ProblemDetail> invalidLogout(InvalidLogoutContextException exception) {
+        return org.springframework.http.ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                .header("WWW-Authenticate", "Bearer")
+                .body(problem(HttpStatus.UNAUTHORIZED, "Authentication rejected"));
+    }
+
+    @ExceptionHandler(LogoutUnavailableException.class)
+    ProblemDetail logoutFailure(LogoutUnavailableException exception) {
+        return classifiedFailure(exception);
+    }
+
     @ExceptionHandler(RefreshUnavailableException.class)
     ProblemDetail refreshFailure(RefreshUnavailableException exception) {
+        return classifiedFailure(exception);
+    }
+
+    private ProblemDetail classifiedFailure(Exception exception) {
         for (Throwable cause = exception; cause != null; cause = cause.getCause()) {
             if (cause instanceof DataAccessResourceFailureException
                     || cause instanceof com.secureflow.identity.application.SecurityStateUnavailableException

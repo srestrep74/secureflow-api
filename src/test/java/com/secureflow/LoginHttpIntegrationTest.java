@@ -369,7 +369,13 @@ class LoginHttpIntegrationTest {
                             .build(),
                     HttpResponse.BodyHandlers.ofString());
             assertThat(docs.body())
-                    .contains("/api/v1/auth/login", "/api/v1/auth/refresh", "access_token", "refresh_token");
+                    .contains(
+                            "/api/v1/auth/login",
+                            "/api/v1/auth/refresh",
+                            "/api/v1/auth/logout",
+                            "bearerAuth",
+                            "access_token",
+                            "refresh_token");
         }
     }
 
@@ -436,5 +442,195 @@ class LoginHttpIntegrationTest {
         }
         assertThat(request("/api/v1/auth/login", "test", "text/plain").statusCode())
                 .isEqualTo(415);
+    }
+
+    HttpResponse<String> logout(String token) throws Exception {
+        var builder = HttpRequest.newBuilder(URI.create("http://localhost:" + port + "/api/v1/auth/logout"));
+        if (token != null) builder.header("Authorization", "Bearer " + token);
+        try (var client = HttpClient.newHttpClient()) {
+            return client.send(
+                    builder.POST(HttpRequest.BodyPublishers.noBody()).build(), HttpResponse.BodyHandlers.ofString());
+        }
+    }
+
+    @Test
+    void httpLogoutRevokesOnlyCurrentFamilyAndCompletesLifecycle() throws Exception {
+        var registered = request(
+                "/api/v1/auth/register",
+                "{\"username\":\"logoutuser\",\"email\":\"logout@example.com\",\"password\":\"correct horse battery\"}",
+                "application/json");
+        var user = UUID.fromString(value(registered.body(), "id"));
+        var credentials = "{\"identifier\":\"logoutuser\",\"password\":\"correct horse battery\"}";
+        var first = login(credentials);
+        var second = login(credentials);
+        var access = value(first.body(), "access_token");
+        var refresh = value(first.body(), "refresh_token");
+        var otherAccess = value(second.body(), "access_token");
+        var otherRefresh = value(second.body(), "refresh_token");
+        var family = UUID.fromString(decoder.decode(access).getClaimAsString("sid"));
+        var userBefore = jdbc.queryForMap("select status, security_version from users where id = ?", user);
+        var rolesBefore = jdbc.queryForList("select role from user_roles where user_id = ? order by role", user);
+        assertThat(me(access).statusCode()).isEqualTo(200);
+        assertThat(me(otherAccess).statusCode()).isEqualTo(200);
+        assertThat(logout(null).statusCode()).isEqualTo(401);
+        assertThat(logout("malformed").statusCode()).isEqualTo(401);
+        var result = logout(access);
+        assertThat(result.statusCode()).isEqualTo(204);
+        assertThat(result.body()).isEmpty();
+        assertThat(result.headers().firstValue("cache-control").orElseThrow()).contains("no-store");
+        assertThat(result.headers().firstValue("set-cookie")).isEmpty();
+        var revoked =
+                jdbc.queryForMap("select revoked_at, xmin::text as version from session_families where id = ?", family);
+        assertThat(revoked.get("revoked_at")).isNotNull();
+        assertThat(logout(access).statusCode()).isEqualTo(401);
+        assertThat(jdbc.queryForMap(
+                        "select revoked_at, xmin::text as version from session_families where id = ?", family))
+                .isEqualTo(revoked);
+        var rejected = me(access);
+        assertThat(rejected.statusCode()).isEqualTo(401);
+        assertThat(rejected.body()).doesNotContain(access, family.toString(), user.toString());
+        assertThat(me(otherAccess).statusCode()).isEqualTo(200);
+        var invalidRefresh =
+                request("/api/v1/auth/refresh", "{\"refresh_token\":\"" + refresh + "\"}", "application/json");
+        assertThat(invalidRefresh.statusCode()).isEqualTo(401);
+        assertThat(invalidRefresh.body()).doesNotContain(refresh, "access_token", "refresh_token");
+        var rotated =
+                request("/api/v1/auth/refresh", "{\"refresh_token\":\"" + otherRefresh + "\"}", "application/json");
+        assertThat(rotated.statusCode()).isEqualTo(200);
+        assertThat(me(value(rotated.body(), "access_token")).statusCode()).isEqualTo(200);
+        assertThat(jdbc.queryForObject("select count(*) from session_families where user_id = ?", Integer.class, user))
+                .isEqualTo(2);
+        assertThat(jdbc.queryForMap("select status, security_version from users where id = ?", user))
+                .isEqualTo(userBefore);
+        assertThat(jdbc.queryForList("select role from user_roles where user_id = ? order by role", user))
+                .isEqualTo(rolesBefore);
+        var newAccess = value(login(credentials).body(), "access_token");
+        assertThat(me(newAccess).statusCode()).isEqualTo(200);
+        assertThat(logout(value(rotated.body(), "access_token")).statusCode()).isEqualTo(204);
+        assertThat(request(
+                                "/api/v1/auth/refresh",
+                                "{\"refresh_token\":\"" + value(rotated.body(), "refresh_token") + "\"}",
+                                "application/json")
+                        .statusCode())
+                .isEqualTo(401);
+    }
+
+    @Test
+    void httpLogoutReportsPersistenceFailureWithoutFalseSuccess() throws Exception {
+        request(
+                "/api/v1/auth/register",
+                "{\"username\":\"logoutfailure\",\"email\":\"logoutfailure@example.com\",\"password\":\"correct horse battery\"}",
+                "application/json");
+        var token = value(
+                login("{\"identifier\":\"logoutfailure\",\"password\":\"correct horse battery\"}")
+                        .body(),
+                "access_token");
+        var family = UUID.fromString(decoder.decode(token).getClaimAsString("sid"));
+        doThrow(new DataAccessResourceFailureException("sensitive outage"))
+                .when(sessions)
+                .revoke(any(), any());
+        var response = logout(token);
+        assertThat(response.statusCode()).isEqualTo(503);
+        assertThat(response.body()).doesNotContain(token, family.toString(), "sensitive", "SQL");
+        assertThat(jdbc.queryForObject(
+                        "select revoked_at is null from session_families where id = ?", Boolean.class, family))
+                .isTrue();
+    }
+
+    @Test
+    void logoutRejectsInvalidCredentialsAndUnsupportedMethods() throws Exception {
+        var registered = request(
+                "/api/v1/auth/register",
+                "{\"username\":\"logoutinvalid\",\"email\":\"logoutinvalid@example.com\",\"password\":\"correct horse battery\"}",
+                "application/json");
+        var user = UUID.fromString(value(registered.body(), "id"));
+        var access = value(
+                login("{\"identifier\":\"logoutinvalid\",\"password\":\"correct horse battery\"}")
+                        .body(),
+                "access_token");
+        var family = UUID.fromString(decoder.decode(access).getClaimAsString("sid"));
+        var parts = access.split("\\.");
+        var signature = parts[2].charAt(0) == 'A' ? "B" : "A";
+        assertThat(logout(parts[0] + "." + parts[1] + "." + signature + parts[2].substring(1))
+                        .statusCode())
+                .isEqualTo(401);
+        var claims = new java.util.HashMap<>(decoder.decode(access).getClaims());
+        var now = java.time.Instant.now();
+        claims.put("iat", now.minusSeconds(180));
+        claims.put("nbf", now.minusSeconds(180));
+        claims.put("exp", now.minusSeconds(120));
+        var expired = encoder.encode(org.springframework.security.oauth2.jwt.JwtEncoderParameters.from(
+                        org.springframework.security.oauth2.jwt.JwsHeader.with(
+                                        org.springframework.security.oauth2.jose.jws.SignatureAlgorithm.RS256)
+                                .keyId("test-key")
+                                .type("JWT")
+                                .build(),
+                        org.springframework.security.oauth2.jwt.JwtClaimsSet.builder()
+                                .claims(values -> values.putAll(claims))
+                                .build()))
+                .getTokenValue();
+        assertThat(logout(expired).statusCode()).isEqualTo(401);
+        try (var client = HttpClient.newHttpClient()) {
+            var get = HttpRequest.newBuilder(URI.create("http://localhost:" + port + "/api/v1/auth/logout"))
+                    .header("Authorization", "Bearer " + access)
+                    .GET()
+                    .build();
+            assertThat(client.send(get, HttpResponse.BodyHandlers.ofString()).statusCode())
+                    .isIn(403, 405);
+        }
+        jdbc.update("update users set status = 'INACTIVE' where id = ?", user);
+        assertThat(logout(access).statusCode()).isEqualTo(401);
+        assertThat(jdbc.queryForObject(
+                        "select revoked_at is null from session_families where id = ?", Boolean.class, family))
+                .isTrue();
+    }
+
+    @Test
+    void unexpectedLogoutFailureReturnsSanitized500() throws Exception {
+        request(
+                "/api/v1/auth/register",
+                "{\"username\":\"logouterror\",\"email\":\"logouterror@example.com\",\"password\":\"correct horse battery\"}",
+                "application/json");
+        var token = value(
+                login("{\"identifier\":\"logouterror\",\"password\":\"correct horse battery\"}")
+                        .body(),
+                "access_token");
+        var family = UUID.fromString(decoder.decode(token).getClaimAsString("sid"));
+        doThrow(new IllegalStateException("sensitive failure")).when(sessions).revoke(any(), any());
+        var response = logout(token);
+        assertThat(response.statusCode()).isEqualTo(500);
+        assertThat(response.body()).doesNotContain(token, family.toString(), "sensitive");
+        assertThat(jdbc.queryForObject(
+                        "select revoked_at is null from session_families where id = ?", Boolean.class, family))
+                .isTrue();
+    }
+
+    @Test
+    void deferredCommitFailureDoesNotReturnLogoutSuccess() throws Exception {
+        request(
+                "/api/v1/auth/register",
+                "{\"username\":\"logoutcommit\",\"email\":\"logoutcommit@example.com\",\"password\":\"correct horse battery\"}",
+                "application/json");
+        var token = value(
+                login("{\"identifier\":\"logoutcommit\",\"password\":\"correct horse battery\"}")
+                        .body(),
+                "access_token");
+        var family = UUID.fromString(decoder.decode(token).getClaimAsString("sid"));
+        jdbc.execute(
+                "create function test_http_logout_commit_failure() returns trigger language plpgsql as 'begin raise exception ''injected failure''; end'");
+        try {
+            jdbc.execute(
+                    "create constraint trigger test_http_logout_commit_failure after update on session_families deferrable initially deferred for each row execute function test_http_logout_commit_failure()");
+            var response = logout(token);
+            assertThat(response.statusCode()).isEqualTo(500);
+            assertThat(response.body()).doesNotContain(token, family.toString(), "injected", "SQL");
+            assertThat(jdbc.queryForObject(
+                            "select revoked_at is null from session_families where id = ?", Boolean.class, family))
+                    .isTrue();
+        } finally {
+            jdbc.execute("drop trigger if exists test_http_logout_commit_failure on session_families");
+            jdbc.execute("drop function test_http_logout_commit_failure()");
+        }
+        assertThat(logout(token).statusCode()).isEqualTo(204);
     }
 }

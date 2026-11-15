@@ -43,3 +43,5 @@ HTTP integration coverage uses PostgreSQL 17 Testcontainers and RS256 issuance t
 ## Phase 5.6A verification
 
 PostgreSQL integration coverage exercises current-family logout, ownership, idempotence, session isolation, bearer and refresh rejection, immediate and deferred transaction failures, and both lock-contention orders. Existing security, refresh and architecture checks remain regression gates.
+
+Phase 5.6B adds HTTP lifecycle and family-isolation tests using the real Resource Server, signed JWTs and PostgreSQL Testcontainers. A deferred PostgreSQL trigger exercises commit failure over HTTP. Repository-boundary and security-state exceptions simulate unavailability; these are not outages of a running PostgreSQL server. Existing transaction and concurrency integration tests remain regression gates.

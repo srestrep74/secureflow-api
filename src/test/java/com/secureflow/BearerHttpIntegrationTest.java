@@ -384,4 +384,23 @@ class BearerHttpIntegrationTest {
                 JwtClaimsSet.builder().claims(values -> values.putAll(claims)).build();
         return encoder.encode(JwtEncoderParameters.from(header, body)).getTokenValue();
     }
+
+    @Test
+    void logoutRejectsSecurityStateOutageBeforeRevocation() throws Exception {
+        var token = login();
+        var family = UUID.fromString(decoder.decode(token).getClaimAsString("sid"));
+        doThrow(new SecurityStateUnavailableException()).when(state).findCurrentState(any(), any());
+        try (var client = HttpClient.newHttpClient()) {
+            var request = HttpRequest.newBuilder(URI.create("http://localhost:" + port + "/api/v1/auth/logout"))
+                    .header("Authorization", "Bearer " + token)
+                    .POST(HttpRequest.BodyPublishers.noBody())
+                    .build();
+            var response = client.send(request, HttpResponse.BodyHandlers.ofString());
+            assertThat(response.statusCode()).isEqualTo(503);
+            assertThat(response.body()).doesNotContain(token, family.toString(), "SQL");
+            assertThat(jdbc.queryForObject(
+                            "select revoked_at is null from session_families where id = ?", Boolean.class, family))
+                    .isTrue();
+        }
+    }
 }

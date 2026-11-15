@@ -36,4 +36,6 @@ Refresh needs no access JWT. Resource Server processes any supplied Bearer heade
 
 ## Current-session logout
 
-Phase 5.6A revokes the family in PostgreSQL. Subsequent Resource Server checks reject JWTs referencing that family, while other active families remain valid. A token held by a client is not erased and a request authenticated before commit may finish. No blacklist or cache is used. HTTP logout remains Phase 5.6B.
+Phase 5.6A revokes the family in PostgreSQL. Subsequent Resource Server checks reject JWTs referencing that family, while other active families remain valid. A token held by a client is not erased and a request authenticated before commit may finish. No blacklist or cache is used. HTTP logout was added in Phase 5.6B.
+
+Phase 5.6B exposes authenticated current-family revocation at `POST /api/v1/auth/logout`. After commit, each subsequent Bearer request checks PostgreSQL and rejects the revoked family, even though the signed JWT string still exists. Previously authenticated in-flight requests can finish. Other families remain valid.

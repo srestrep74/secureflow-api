@@ -23,3 +23,7 @@ With JWT enabled, GET /api/v1/me requires a valid, current Bearer access token a
 ## Phase 5.5B refresh
 
 With JWT enabled, POST /api/v1/auth/refresh accepts only JSON refresh_token (maximum 256 characters; body maximum 4096 bytes). Success returns the login token fields with no-store and no-cache headers. Invalid structure yields 400, unsupported media 415, invalid credentials 401, classified dependency unavailability 503 and unexpected failures 500. No access JWT is needed. Use HTTPS and omit Authorization: an expired Bearer header is rejected before the controller. Logout is not implemented.
+
+## Phase 5.6B: HTTP current-session logout
+
+`POST /api/v1/auth/logout` requires a valid Bearer access JWT and no request body. It returns 204 with an empty body and `Cache-Control: no-store` only after the current family revocation commits. The authenticated JWT supplies the user and family identifiers; clients cannot select another family. Other sessions remain active. The client must discard its locally stored access and refresh tokens. A repeated HTTP logout with the revoked JWT returns 401, although the underlying application operation is idempotent. Invalid authentication or state returns 401 with Bearer semantics, classified infrastructure outages return 503, and unexpected failures return 500 without internal details. Documentation remains opt-in.

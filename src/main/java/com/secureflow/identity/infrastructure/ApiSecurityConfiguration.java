@@ -62,6 +62,8 @@ class ApiSecurityConfiguration {
                         auth.requestMatchers(HttpMethod.POST, "/api/v1/auth/login", "/api/v1/auth/refresh")
                                 .permitAll();
                         auth.requestMatchers(HttpMethod.GET, "/api/v1/me").authenticated();
+                        auth.requestMatchers(HttpMethod.POST, "/api/v1/auth/logout")
+                                .authenticated();
                     }
                     auth.requestMatchers(HttpMethod.GET, "/actuator/health").permitAll();
                     if (docsEnabled)
