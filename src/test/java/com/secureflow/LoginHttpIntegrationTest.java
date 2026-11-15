@@ -25,14 +25,37 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.postgresql.PostgreSQLContainer;
 
 @Testcontainers
+@org.springframework.context.annotation.Import(LoginHttpIntegrationTest.ControllerProbe.class)
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 class LoginHttpIntegrationTest {
+    static final java.util.concurrent.atomic.AtomicInteger meDispatches =
+            new java.util.concurrent.atomic.AtomicInteger();
+
+    @org.springframework.boot.test.context.TestConfiguration(proxyBeanMethods = false)
+    static class ControllerProbe implements org.springframework.web.servlet.config.annotation.WebMvcConfigurer {
+        @Override
+        public void addInterceptors(org.springframework.web.servlet.config.annotation.InterceptorRegistry registry) {
+            registry.addInterceptor(new org.springframework.web.servlet.HandlerInterceptor() {
+                        @Override
+                        public boolean preHandle(
+                                jakarta.servlet.http.HttpServletRequest request,
+                                jakarta.servlet.http.HttpServletResponse response,
+                                Object handler) {
+                            meDispatches.incrementAndGet();
+                            return true;
+                        }
+                    })
+                    .addPathPatterns("/api/v1/me");
+        }
+    }
+
     @Container
     static final PostgreSQLContainer postgres = new PostgreSQLContainer("postgres:17-alpine");
 
     @DynamicPropertySource
     static void properties(DynamicPropertyRegistry r) {
-        r.add("spring.datasource.url", postgres::getJdbcUrl);
+        r.add("spring.datasource.url", () -> postgres.getJdbcUrl() + "&socketTimeout=2&connectTimeout=2");
+        r.add("spring.datasource.hikari.connection-timeout", () -> 3000);
         r.add("spring.datasource.username", postgres::getUsername);
         r.add("spring.datasource.password", postgres::getPassword);
         r.add("secureflow.jwt.enabled", () -> true);
@@ -467,14 +490,21 @@ class LoginHttpIntegrationTest {
         var refresh = value(first.body(), "refresh_token");
         var otherAccess = value(second.body(), "access_token");
         var otherRefresh = value(second.body(), "refresh_token");
+        assertThat(me(access).statusCode()).isEqualTo(200);
+        var firstRotation =
+                request("/api/v1/auth/refresh", "{\"refresh_token\":\"" + refresh + "\"}", "application/json");
+        assertThat(firstRotation.statusCode()).isEqualTo(200);
+        var rotatedAccess = value(firstRotation.body(), "access_token");
+        refresh = value(firstRotation.body(), "refresh_token");
         var family = UUID.fromString(decoder.decode(access).getClaimAsString("sid"));
         var userBefore = jdbc.queryForMap("select status, security_version from users where id = ?", user);
         var rolesBefore = jdbc.queryForList("select role from user_roles where user_id = ? order by role", user);
         assertThat(me(access).statusCode()).isEqualTo(200);
+        assertThat(me(rotatedAccess).statusCode()).isEqualTo(200);
         assertThat(me(otherAccess).statusCode()).isEqualTo(200);
         assertThat(logout(null).statusCode()).isEqualTo(401);
         assertThat(logout("malformed").statusCode()).isEqualTo(401);
-        var result = logout(access);
+        var result = logout(rotatedAccess);
         assertThat(result.statusCode()).isEqualTo(204);
         assertThat(result.body()).isEmpty();
         assertThat(result.headers().firstValue("cache-control").orElseThrow()).contains("no-store");
@@ -488,6 +518,7 @@ class LoginHttpIntegrationTest {
                 .isEqualTo(revoked);
         var rejected = me(access);
         assertThat(rejected.statusCode()).isEqualTo(401);
+        assertThat(me(rotatedAccess).statusCode()).isEqualTo(401);
         assertThat(rejected.body()).doesNotContain(access, family.toString(), user.toString());
         assertThat(me(otherAccess).statusCode()).isEqualTo(200);
         var invalidRefresh =
@@ -513,6 +544,111 @@ class LoginHttpIntegrationTest {
                                 "application/json")
                         .statusCode())
                 .isEqualTo(401);
+    }
+
+    @Test
+    void transactionStartOutageAfterCredentialValidationReturns503() throws Exception {
+        assertThat(request(
+                                "/api/v1/auth/register",
+                                "{\"username\":\"txoutage\",\"email\":\"txoutage@example.com\",\"password\":\"correct horse battery\"}",
+                                "application/json")
+                        .statusCode())
+                .isEqualTo(201);
+        var before = jdbc.queryForObject("select count(*) from session_families", Integer.class);
+        doThrow(new org.springframework.transaction.CannotCreateTransactionException("sensitive transaction failure"))
+                .when(sessions)
+                .create(any(), any());
+        var result = login("{\"identifier\":\"txoutage\",\"password\":\"correct horse battery\"}");
+        assertThat(result.statusCode()).isEqualTo(503);
+        assertThat(result.body()).doesNotContain("sensitive transaction failure", "access_token", "refresh_token");
+        assertThat(jdbc.queryForObject("select count(*) from session_families", Integer.class))
+                .isEqualTo(before);
+    }
+
+    @Test
+    void deferredLoginCommitFailureDoesNotReturnCredentialsOrPersistSession() throws Exception {
+        assertThat(request(
+                                "/api/v1/auth/register",
+                                "{\"username\":\"logincommit\",\"email\":\"logincommit@example.com\",\"password\":\"correct horse battery\"}",
+                                "application/json")
+                        .statusCode())
+                .isEqualTo(201);
+        var before = jdbc.queryForObject("select count(*) from session_families", Integer.class);
+        jdbc.execute(
+                "create function test_http_login_commit_failure() returns trigger language plpgsql as 'begin raise exception ''injected failure''; end'");
+        try {
+            jdbc.execute(
+                    "create constraint trigger test_http_login_commit_failure after insert on session_families deferrable initially deferred for each row execute function test_http_login_commit_failure()");
+            var result = login("{\"identifier\":\"logincommit\",\"password\":\"correct horse battery\"}");
+            assertThat(result.statusCode()).isEqualTo(500);
+            assertThat(result.body()).doesNotContain("access_token", "refresh_token", "injected failure");
+            assertThat(jdbc.queryForObject("select count(*) from session_families", Integer.class))
+                    .isEqualTo(before);
+        } finally {
+            jdbc.execute("drop trigger if exists test_http_login_commit_failure on session_families");
+            jdbc.execute("drop function test_http_login_commit_failure()");
+        }
+    }
+
+    @Test
+    void loginRejectsIncompatiblePersistedCatalogWithoutCreatingSession() throws Exception {
+        assertThat(request(
+                                "/api/v1/auth/register",
+                                "{\"username\":\"cataloguser\",\"email\":\"catalog@example.com\",\"password\":\"correct horse battery\"}",
+                                "application/json")
+                        .statusCode())
+                .isEqualTo(201);
+        var before = jdbc.queryForObject("select count(*) from session_families", Integer.class);
+        try {
+            jdbc.update("update authorization_catalog_state set version = 2");
+            var response = login("{\"identifier\":\"cataloguser\",\"password\":\"correct horse battery\"}");
+            assertThat(response.statusCode()).isEqualTo(503);
+            assertThat(response.body()).doesNotContain("access_token", "refresh_token");
+            assertThat(jdbc.queryForObject("select count(*) from session_families", Integer.class))
+                    .isEqualTo(before);
+        } finally {
+            jdbc.update("update authorization_catalog_state set version = 1");
+        }
+    }
+
+    @Test
+    void actualPostgresOutageFailsClosedAndRecovers() throws Exception {
+        assertThat(request(
+                                "/api/v1/auth/register",
+                                "{\"username\":\"liveoutage\",\"email\":\"liveoutage@example.com\",\"password\":\"correct horse battery\"}",
+                                "application/json")
+                        .statusCode())
+                .isEqualTo(201);
+        var credentials = "{\"identifier\":\"liveoutage\",\"password\":\"correct horse battery\"}";
+        var initial = login(credentials);
+        assertThat(initial.statusCode()).isEqualTo(200);
+        var access = value(initial.body(), "access_token");
+        var refresh = value(initial.body(), "refresh_token");
+        assertThat(me(access).statusCode()).isEqualTo(200);
+        var dispatchesBeforeOutage = meDispatches.get();
+        var docker = org.testcontainers.DockerClientFactory.instance().client();
+        docker.pauseContainerCmd(postgres.getContainerId()).exec();
+        try {
+            var unavailable = me(access);
+            assertThat(unavailable.statusCode()).isEqualTo(503);
+            assertThat(meDispatches.get()).isEqualTo(dispatchesBeforeOutage);
+            assertThat(unavailable.body()).doesNotContain(access, refresh, "SQL");
+            assertThat(login(credentials).statusCode()).isEqualTo(503);
+            assertThat(request("/api/v1/auth/refresh", "{\"refresh_token\":\"" + refresh + "\"}", "application/json")
+                            .statusCode())
+                    .isEqualTo(503);
+            assertThat(logout(access).statusCode()).isEqualTo(503);
+        } finally {
+            docker.unpauseContainerCmd(postgres.getContainerId()).exec();
+        }
+        org.awaitility.Awaitility.await()
+                .atMost(java.time.Duration.ofSeconds(15))
+                .untilAsserted(() -> assertThat(jdbc.queryForObject("select 1", Integer.class))
+                        .isEqualTo(1));
+        assertThat(me(access).statusCode()).isEqualTo(200);
+        assertThat(request("/api/v1/auth/refresh", "{\"refresh_token\":\"" + refresh + "\"}", "application/json")
+                        .statusCode())
+                .isEqualTo(200);
     }
 
     @Test

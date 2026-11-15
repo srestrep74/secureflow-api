@@ -29,10 +29,15 @@ class CredentialAuthenticationAdapterTest {
         var adapter = new SpringCredentialAuthenticationAdapter(manager);
         assertThat(adapter.authenticate("alice", "a strong password").userId()).isEqualTo(user.id());
         verify(manager).authenticate(any(UsernamePasswordAuthenticationToken.class));
-        when(users.findByUsername(new Username("alice"))).thenThrow(new IllegalStateException("database unavailable"));
+        when(users.findByUsername(new Username("alice")))
+                .thenThrow(new org.springframework.dao.DataAccessResourceFailureException("database unavailable"));
         assertThatThrownBy(() -> adapter.authenticate("alice", "a strong password"))
                 .isInstanceOf(AuthenticationUnavailableException.class)
                 .hasMessage("Authentication unavailable");
+        doThrow(new IllegalStateException("unexpected failure")).when(manager).authenticate(any());
+        assertThatThrownBy(() -> adapter.authenticate("alice", "a strong password"))
+                .isInstanceOf(IllegalStateException.class);
+        doCallRealMethod().when(manager).authenticate(any());
         doReturn(Optional.empty()).when(users).findByUsername(new Username("alice"));
         assertThatThrownBy(() -> adapter.authenticate("alice", "a strong password"))
                 .isInstanceOf(InvalidCredentialsException.class)

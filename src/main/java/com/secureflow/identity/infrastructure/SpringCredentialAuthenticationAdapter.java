@@ -21,11 +21,18 @@ final class SpringCredentialAuthenticationAdapter implements CredentialAuthentic
             var principal = (CredentialUserDetailsService.CredentialPrincipal) authentication.getPrincipal();
             return new AuthenticatedIdentity(principal.userId(), principal.getUsername());
         } catch (InternalAuthenticationServiceException ex) {
-            throw new AuthenticationUnavailableException();
+            if (ex.getCause() == null || isUnavailable(ex)) throw new AuthenticationUnavailableException();
+            throw ex;
         } catch (AuthenticationException ex) {
             throw new InvalidCredentialsException();
-        } catch (RuntimeException ex) {
-            throw new AuthenticationUnavailableException();
         }
+    }
+
+    private static boolean isUnavailable(Throwable exception) {
+        for (var cause = exception; cause != null; cause = cause.getCause()) {
+            if (cause instanceof org.springframework.dao.DataAccessResourceFailureException
+                    || cause instanceof org.springframework.transaction.CannotCreateTransactionException) return true;
+        }
+        return false;
     }
 }

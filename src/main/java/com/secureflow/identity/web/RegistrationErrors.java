@@ -67,7 +67,11 @@ class RegistrationErrors {
         return problem(HttpStatus.INTERNAL_SERVER_ERROR, "Internal server error");
     }
 
-    @ExceptionHandler({DataAccessResourceFailureException.class, AuthenticationUnavailableException.class})
+    @ExceptionHandler({
+        DataAccessResourceFailureException.class,
+        AuthenticationUnavailableException.class,
+        org.springframework.transaction.CannotCreateTransactionException.class
+    })
     ProblemDetail unavailable(Exception exception) {
         return problem(HttpStatus.SERVICE_UNAVAILABLE, "Service temporarily unavailable");
     }

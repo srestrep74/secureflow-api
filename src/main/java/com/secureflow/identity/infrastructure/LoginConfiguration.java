@@ -44,6 +44,11 @@ class LoginConfiguration {
             var found = jdbc.query(
                     "select id from users where id = ? for update", (rs, row) -> rs.getObject(1), id.value());
             if (found.isEmpty()) throw new InvalidCredentialsException();
+            var versions = jdbc.query(
+                    "select version from authorization_catalog_state where singleton = true for share",
+                    (rs, row) -> rs.getLong(1));
+            if (versions.size() != 1 || versions.getFirst() != JwtAuthorityCatalog.VERSION)
+                throw new AuthenticationUnavailableException();
             return operation.get();
         });
     }
