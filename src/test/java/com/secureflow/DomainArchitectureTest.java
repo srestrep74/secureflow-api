@@ -51,7 +51,15 @@ class DomainArchitectureTest {
             .resideInAPackage("..application..")
             .should()
             .dependOnClassesThat()
-            .resideInAnyPackage("..infrastructure..", "org.springframework..", "jakarta.persistence..");
+            .resideInAnyPackage("..infrastructure..", "..web..", "org.springframework..", "jakarta.persistence..");
+
+    @ArchTest
+    static final ArchRule webDoesNotDependOnPersistence = noClasses()
+            .that()
+            .resideInAPackage("..web..")
+            .should()
+            .dependOnClassesThat()
+            .resideInAnyPackage("..infrastructure..", "org.springframework.data..");
 
     @ArchTest
     static final ArchRule entitiesStayInInfrastructure =

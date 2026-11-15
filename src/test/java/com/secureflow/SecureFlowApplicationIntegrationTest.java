@@ -21,7 +21,7 @@ import org.testcontainers.postgresql.PostgreSQLContainer;
 @Testcontainers
 @SpringBootTest(
         webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
-        properties = "springdoc.api-docs.enabled=true")
+        properties = {"springdoc.api-docs.enabled=true", "springdoc.swagger-ui.enabled=true"})
 class SecureFlowApplicationIntegrationTest {
     @Container
     static final PostgreSQLContainer postgres = new PostgreSQLContainer("postgres:17-alpine");
@@ -63,6 +63,13 @@ class SecureFlowApplicationIntegrationTest {
             assertThat(health.body()).contains("\"status\":\"UP\"");
             assertThat(openApi.statusCode()).isEqualTo(200);
             assertThat(openApi.body()).contains("\"openapi\"");
+            assertThat(openApi.body()).contains("/api/v1/auth/register", "RegistrationRequest", "RegistrationResponse");
+            var ui = client.send(
+                    HttpRequest.newBuilder(URI.create("http://localhost:" + port + "/swagger-ui/index.html"))
+                            .GET()
+                            .build(),
+                    HttpResponse.BodyHandlers.ofString());
+            assertThat(ui.statusCode()).isEqualTo(200);
         }
     }
 }
