@@ -25,8 +25,13 @@ public final class User {
         return new User(id, username, email);
     }
 
-    public static User reconstitute(UserId id, Username username, EmailAddress email, Set<Role> roles,
-                                    AccountStatus status, long securityVersion) {
+    public static User reconstitute(
+            UserId id,
+            Username username,
+            EmailAddress email,
+            Set<Role> roles,
+            AccountStatus status,
+            long securityVersion) {
         if (securityVersion < 0) throw new IllegalArgumentException("Security version cannot be negative");
         User user = new User(id, username, email);
         user.roles.clear();
@@ -36,12 +41,29 @@ public final class User {
         return user;
     }
 
-    public UserId id() { return id; }
-    public Username username() { return username; }
-    public EmailAddress email() { return email; }
-    public AccountStatus status() { return status; }
-    public long securityVersion() { return securityVersion; }
-    public Set<Role> roles() { return Set.copyOf(roles); }
+    public UserId id() {
+        return id;
+    }
+
+    public Username username() {
+        return username;
+    }
+
+    public EmailAddress email() {
+        return email;
+    }
+
+    public AccountStatus status() {
+        return status;
+    }
+
+    public long securityVersion() {
+        return securityVersion;
+    }
+
+    public Set<Role> roles() {
+        return Set.copyOf(roles);
+    }
 
     public void assignRole(Role role) {
         Objects.requireNonNull(role, "role");

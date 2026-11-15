@@ -10,7 +10,8 @@ import org.junit.jupiter.api.Test;
 class UserTest {
     @Test
     void registrationNormalizesIdentityAndGrantsOnlyUser() {
-        var user = User.register(new UserId(UUID.randomUUID()), new Username(" Alice "), new EmailAddress(" A@EXAMPLE.COM "));
+        var user = User.register(
+                new UserId(UUID.randomUUID()), new Username(" Alice "), new EmailAddress(" A@EXAMPLE.COM "));
         assertEquals(new Username("alice"), user.username());
         assertEquals(new EmailAddress("a@example.com"), user.email());
         assertEquals(Set.of(Role.USER), user.roles());
@@ -21,7 +22,8 @@ class UserTest {
 
     @Test
     void effectiveSecurityChangesIncrementVersionButNoOpsDoNot() {
-        var user = User.register(new UserId(UUID.randomUUID()), new Username("alice"), new EmailAddress("a@example.com"));
+        var user =
+                User.register(new UserId(UUID.randomUUID()), new Username("alice"), new EmailAddress("a@example.com"));
         user.assignRole(Role.USER);
         user.assignRole(Role.ADMIN);
         user.assignRole(Role.ADMIN);

@@ -19,7 +19,9 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.postgresql.PostgreSQLContainer;
 
 @Testcontainers
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT, properties = "springdoc.api-docs.enabled=true")
+@SpringBootTest(
+        webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
+        properties = "springdoc.api-docs.enabled=true")
 class SecureFlowApplicationIntegrationTest {
     @Container
     static final PostgreSQLContainer postgres = new PostgreSQLContainer("postgres:17-alpine");
@@ -39,17 +41,24 @@ class SecureFlowApplicationIntegrationTest {
         var jdbc = new JdbcTemplate(dataSource);
         assertThat(jdbc.queryForObject("SELECT 1", Integer.class)).isEqualTo(1);
         assertThat(jdbc.queryForObject(
-                "SELECT count(*) FROM flyway_schema_history WHERE version = '1' AND success = true",
-                Integer.class)).isEqualTo(1);
+                        "SELECT count(*) FROM flyway_schema_history WHERE version = '1' AND success = true",
+                        Integer.class))
+                .isEqualTo(1);
     }
 
     @Test
     void healthAndOpenApiAreAvailableWhenExplicitlyEnabled() throws Exception {
         try (var client = HttpClient.newHttpClient()) {
-            var health = client.send(HttpRequest.newBuilder(URI.create("http://localhost:" + port + "/actuator/health"))
-                    .GET().build(), HttpResponse.BodyHandlers.ofString());
-            var openApi = client.send(HttpRequest.newBuilder(URI.create("http://localhost:" + port + "/v3/api-docs"))
-                    .GET().build(), HttpResponse.BodyHandlers.ofString());
+            var health = client.send(
+                    HttpRequest.newBuilder(URI.create("http://localhost:" + port + "/actuator/health"))
+                            .GET()
+                            .build(),
+                    HttpResponse.BodyHandlers.ofString());
+            var openApi = client.send(
+                    HttpRequest.newBuilder(URI.create("http://localhost:" + port + "/v3/api-docs"))
+                            .GET()
+                            .build(),
+                    HttpResponse.BodyHandlers.ofString());
             assertThat(health.statusCode()).isEqualTo(200);
             assertThat(health.body()).contains("\"status\":\"UP\"");
             assertThat(openApi.statusCode()).isEqualTo(200);

@@ -28,8 +28,15 @@ public final class Task {
         return new Task(id, ownerId, title, description, now);
     }
 
-    public static Task reconstitute(TaskId id, UserId ownerId, TaskTitle title, String description,
-                                    TaskStatus status, Instant createdAt, Instant modifiedAt, long version) {
+    public static Task reconstitute(
+            TaskId id,
+            UserId ownerId,
+            TaskTitle title,
+            String description,
+            TaskStatus status,
+            Instant createdAt,
+            Instant modifiedAt,
+            long version) {
         Task task = new Task(id, ownerId, title, description, createdAt);
         task.validateTime(modifiedAt);
         if (version < 0) throw new IllegalArgumentException("Version cannot be negative");
@@ -39,14 +46,37 @@ public final class Task {
         return task;
     }
 
-    public TaskId id() { return id; }
-    public UserId ownerId() { return ownerId; }
-    public TaskTitle title() { return title; }
-    public String description() { return description; }
-    public TaskStatus status() { return status; }
-    public Instant createdAt() { return createdAt; }
-    public Instant modifiedAt() { return modifiedAt; }
-    public long version() { return version; }
+    public TaskId id() {
+        return id;
+    }
+
+    public UserId ownerId() {
+        return ownerId;
+    }
+
+    public TaskTitle title() {
+        return title;
+    }
+
+    public String description() {
+        return description;
+    }
+
+    public TaskStatus status() {
+        return status;
+    }
+
+    public Instant createdAt() {
+        return createdAt;
+    }
+
+    public Instant modifiedAt() {
+        return modifiedAt;
+    }
+
+    public long version() {
+        return version;
+    }
 
     public void edit(TaskTitle title, String description, Instant now) {
         Objects.requireNonNull(title, "title");
@@ -81,7 +111,8 @@ public final class Task {
     }
 
     private static String validDescription(String description) {
-        if (description != null && description.length() > 4000) throw new IllegalArgumentException("Description is too long");
+        if (description != null && description.length() > 4000)
+            throw new IllegalArgumentException("Description is too long");
         return description;
     }
 }

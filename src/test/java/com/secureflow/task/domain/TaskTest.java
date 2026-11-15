@@ -11,7 +11,8 @@ class TaskTest {
     private static final Instant NOW = Instant.parse("2026-01-01T00:00:00Z");
 
     private Task task() {
-        return Task.create(new TaskId(UUID.randomUUID()), new UserId(UUID.randomUUID()), new TaskTitle(" title "), null, NOW);
+        return Task.create(
+                new TaskId(UUID.randomUUID()), new UserId(UUID.randomUUID()), new TaskTitle(" title "), null, NOW);
     }
 
     @Test
@@ -53,6 +54,8 @@ class TaskTest {
         assertThrows(IllegalArgumentException.class, () -> new TaskTitle(" "));
         assertThrows(IllegalArgumentException.class, () -> new TaskTitle("x".repeat(201)));
         assertThrows(NullPointerException.class, () -> new TaskId(null));
-        assertThrows(NullPointerException.class, () -> Task.create(new TaskId(UUID.randomUUID()), null, new TaskTitle("x"), null, NOW));
+        assertThrows(
+                NullPointerException.class,
+                () -> Task.create(new TaskId(UUID.randomUUID()), null, new TaskTitle("x"), null, NOW));
     }
 }
