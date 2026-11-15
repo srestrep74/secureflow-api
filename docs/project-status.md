@@ -1,5 +1,7 @@
 # Project Status
 
+2026-11-15: Phase 5 security and integration closure audit completed; functional closure is recommended for approval before Phase 6. Three Medium findings were corrected: incompatible catalog issuance, overbroad authentication failure classification, and transaction-start failure mapping. `spotlessApply`, `spotlessCheck`, and `clean check --no-daemon` passed: 150 tests, zero failures, errors or skips. PostgreSQL 17 was actually paused and recovered; login, refresh, bearer and logout failed closed at the tested boundaries. Production hardening remains outstanding. See [audit report](phase-5-security-audit.md). Phase 6 has not started.
+
 2026-11-15: Phase 5.6B implements authenticated HTTP current-family logout, trusted principal adaptation, sanitized errors and opt-in OpenAPI. `spotlessApply`, `spotlessCheck` and `clean check --no-daemon` passed: 146 tests, no failures or skips, including 11 architecture rules, PostgreSQL HTTP lifecycle and isolation, deferred commit failure, existing refresh/logout concurrency and replay tests. Dependency outages were simulated; a running PostgreSQL outage and deployed HTTPS were not tested. In-flight authenticated requests may complete after revocation. Phase 5 requires remaining operational hardening and review before closure; Phase 6 has not started.
 
 2026-11-15: Phase 5.6A implements transactional current-session logout with user-then-family row locks, ownership checks, idempotent revocation and fail-closed transaction errors. `spotlessApply`, `spotlessCheck` and `clean check --no-daemon` passed: 139 tests, no failures or skips, including 11 architecture checks, PostgreSQL contention in both refresh/logout orders, rollback and deferred commit failures, bearer invalidation and session isolation. A running PostgreSQL outage was not tested. HTTP logout and principal extraction remain Phase 5.6B.
@@ -31,7 +33,7 @@
 
 2026-11-15: Phase 4.2A registration application work implemented. Spotless and `clean check --no-daemon` passed: 30 tests, including three PostgreSQL registration tests and eight architecture checks. A credential constraint failure rolled back user and role creation; registration then succeeded with the same identity. HTTP registration remains Phase 4.2B; login remains outside this scope.
 
-**Status: Phase 5.6B implemented and verified; Phase 5 operational review remains pending.**
+**Historical status before the closure audit: Phase 5.6B implemented and verified; operational review was pending.**
 
 2026-11-15: Phase 3 and Spotless approved. Phase 4.1 adds Argon2id hashing and a credential table linked to existing users. `spotlessApply`, `spotlessCheck` and `clean check --no-daemon` passed; 27 tests ran, including three credential integration tests and eight architecture rules. PostgreSQL Testcontainers verified migration V3 and credential constraints. Registration, login and protected administrator bootstrap remain outstanding; JWT and refresh belong to Phase 5. Production hashing costs require deployment benchmarking.
 

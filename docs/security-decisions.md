@@ -69,3 +69,7 @@ Require HTTPS in deployment. Provide login and refresh abuse protection and rate
 Logout uses the existing user-then-family PostgreSQL row-lock protocol and family revocation. Idempotent repeated revocation preserves the first timestamp without updating the row. Invalid context and infrastructure failure are distinct application outcomes. Session-specific revocation does not change account security version or roles; direct writers that bypass the protocol remain unsupported. The endpoint and principal extraction remain Phase 5.6B.
 
 Phase 5.6B keeps Spring Security's default logout disabled and exposes an explicitly authenticated MVC endpoint. It performs persistent family revocation rather than relying on request-context clearing; it creates no HTTP session or authentication cookie. Failures are sanitized: invalid state is 401, classified dependency unavailability 503, and unexpected failures 500. This does not provide logout from all devices, token erasure on clients, or retroactive cancellation of already authenticated requests.
+
+## Phase 5 closure audit
+
+Login locks and verifies the durable authorization catalog before creating a family or issuing credentials. An incompatible catalog produces 503 and no session. Credential authentication distinguishes classified persistence unavailability from unexpected internal failures. See [Phase 5 security audit](phase-5-security-audit.md) for tested outage boundaries, residual transaction gaps and deployment coordination.

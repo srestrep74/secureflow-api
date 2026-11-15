@@ -45,3 +45,7 @@ HTTP integration coverage uses PostgreSQL 17 Testcontainers and RS256 issuance t
 PostgreSQL integration coverage exercises current-family logout, ownership, idempotence, session isolation, bearer and refresh rejection, immediate and deferred transaction failures, and both lock-contention orders. Existing security, refresh and architecture checks remain regression gates.
 
 Phase 5.6B adds HTTP lifecycle and family-isolation tests using the real Resource Server, signed JWTs and PostgreSQL Testcontainers. A deferred PostgreSQL trigger exercises commit failure over HTTP. Repository-boundary and security-state exceptions simulate unavailability; these are not outages of a running PostgreSQL server. Existing transaction and concurrency integration tests remain regression gates.
+
+## Phase 5 closure audit
+
+The audit extends the HTTP lifecycle through rotation, both access tokens, current-family logout, independent sessions and subsequent login. It also pauses an isolated running PostgreSQL 17 container, verifies 503 for protected bearer, login, refresh and logout, checks that the protected MVC handler is not dispatched, then verifies recovery. This does not independently interrupt session creation or logout revocation after those transactions start. See [Phase 5 security audit](phase-5-security-audit.md).

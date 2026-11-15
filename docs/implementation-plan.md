@@ -1,5 +1,7 @@
 # Implementation Plan
 
+2026-11-15: Phase 5 security and integration closure audit completed; functional closure is recommended for approval before Phase 6. Three Medium findings were corrected: incompatible catalog issuance, overbroad authentication failure classification, and transaction-start failure mapping. `spotlessApply`, `spotlessCheck`, and `clean check --no-daemon` passed: 150 tests, zero failures, errors or skips. PostgreSQL 17 was actually paused and recovered; login, refresh, bearer and logout failed closed at the tested boundaries. Production hardening remains outstanding. See [audit report](phase-5-security-audit.md). Phase 6 has not started.
+
 2026-11-15: Phase 5.6B implements authenticated HTTP current-family logout, trusted principal adaptation, sanitized errors and opt-in OpenAPI. `spotlessApply`, `spotlessCheck` and `clean check --no-daemon` passed: 146 tests, no failures or skips, including 11 architecture rules, PostgreSQL HTTP lifecycle and isolation, deferred commit failure, existing refresh/logout concurrency and replay tests. Dependency outages were simulated; a running PostgreSQL outage and deployed HTTPS were not tested. In-flight authenticated requests may complete after revocation. Phase 5 requires remaining operational hardening and review before closure; Phase 6 has not started.
 
 2026-11-15: Phase 5.6A implements transactional current-session logout with user-then-family row locks, ownership checks, idempotent revocation and fail-closed transaction errors. `spotlessApply`, `spotlessCheck` and `clean check --no-daemon` passed: 139 tests, no failures or skips, including 11 architecture checks, PostgreSQL contention in both refresh/logout orders, rollback and deferred commit failures, bearer invalidation and session isolation. A running PostgreSQL outage was not tested. HTTP logout and principal extraction remain Phase 5.6B.
@@ -31,7 +33,7 @@
 
 2026-11-15: Phase 4.2A implements the transactional registration use case; the HTTP adapter and its security configuration remain Phase 4.2B.
 
-**Status: Phase 5.6B implemented and verified; Phase 5 operational review remains pending.**
+**Historical status before the closure audit: Phase 5.6B implemented and verified; operational review was pending.**
 
 2026-11-15: Phase 3 and formatting approved. Phase 4.1 adds an Argon2id encoder, credential persistence port and PostgreSQL migration. Registration, authentication and operator bootstrap remain outstanding. JWT and refresh remain Phase 5.
 
