@@ -1,5 +1,7 @@
 # Project Status
 
+2026-11-15: Phase 5.2 implements PostgreSQL session families and opaque refresh-token digest storage. `spotlessApply`, `spotlessCheck` and `clean check --no-daemon` passed: 101 tests, including three session persistence integration tests and 11 architecture rules, with no failures or skips. Creation is transactional; revocation is idempotent. Rotation, replay handling, cleanup, login, HTTP bearer authentication and PostgreSQL security-state validation remain unimplemented. Catalog version 1 requires durable initialization in Phase 5.4. Phase 5.3 has not started.
+
 2026-11-15: Phase 5.1B implements RS256 access-token construction and structural claims validation. `spotlessApply`, `spotlessCheck` and `clean check --no-daemon` passed: 98 tests, including 43 claims contract cases, six cryptographic configuration tests and 11 architecture rules, with no failures or skips. HTTP bearer authentication, PostgreSQL security-state checks, persistent sessions and refresh remain unimplemented. Catalog version 1 must be coordinated with its future durable migration. See [JWT validation](jwt-validation-flow.md).
 
 2026-11-15: Phase 5.1A implements opt-in external RSA key loading and Spring Security JOSE RS256 encoding and decoding, with a single trusted key identifier. `spotlessApply`, `spotlessCheck` and `clean check --no-daemon` passed; 55 tests ran with no failures or skips, including six cryptographic configuration tests and existing PostgreSQL integration tests. No HTTP JWT authentication, complete claims validation, session checks or authorization is implemented. Phase 5.1B remains unstarted. See [JWT validation](jwt-validation-flow.md) and [key operations](security-decisions.md).
@@ -12,7 +14,7 @@
 
 2026-11-15: Phase 4.2A registration application work implemented. Spotless and `clean check --no-daemon` passed: 30 tests, including three PostgreSQL registration tests and eight architecture checks. A credential constraint failure rolled back user and role creation; registration then succeeded with the same identity. HTTP registration remains Phase 4.2B; login remains outside this scope.
 
-**Status: Phase 5.1B implemented and verified; Phase 5.2 has not started.**
+**Status: Phase 5.2 implemented and verified; Phase 5.3 has not started.**
 
 2026-11-15: Phase 3 and Spotless approved. Phase 4.1 adds Argon2id hashing and a credential table linked to existing users. `spotlessApply`, `spotlessCheck` and `clean check --no-daemon` passed; 27 tests ran, including three credential integration tests and eight architecture rules. PostgreSQL Testcontainers verified migration V3 and credential constraints. Registration, login and protected administrator bootstrap remain outstanding; JWT and refresh belong to Phase 5. Production hashing costs require deployment benchmarking.
 
