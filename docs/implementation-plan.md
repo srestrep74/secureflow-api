@@ -1,5 +1,7 @@
 # Implementation Plan
 
+2026-11-15: Phase 5.5B adds the opt-in refresh HTTP adapter, validation, generic errors, cache controls, OpenAPI and PostgreSQL HTTP integration coverage. `spotlessApply`, `spotlessCheck`, and `clean check --no-daemon` passed: 136 tests, no failures or skips. Dependency failure was simulated; a running PostgreSQL outage and deployed HTTPS were not tested. Phase 5.6 logout remains unstarted.
+
 2026-11-15: Phase 5.5A implements application-level atomic refresh rotation and strict replay revocation. `spotlessApply`, `spotlessCheck`, and `clean check --no-daemon` passed: 131 tests, no failures or skips, including PostgreSQL lock contention, rollback and deferred commit failures, bearer revocation and architecture regression tests. A running database outage and a missing user behind the enforced foreign key were not exercised. HTTP refresh and logout remain unimplemented.
 
 2026-11-15: Phase 5.4B implements opt-in HTTP JWT Resource Server authentication with PostgreSQL current-state validation and explicit GET /api/v1/me authorization. spotlessApply, spotlessCheck and clean check --no-daemon passed: 124 tests, no failures or skips, including eight HTTP Bearer tests and the existing architecture and PostgreSQL tests. The HTTP availability failure was injected; an outage of a running PostgreSQL server was not tested. READ COMMITTED does not retroactively revoke requests already in progress. Refresh rotation, replay handling, logout and task authorization remain deferred. Phase 5.5 has not started.
@@ -24,7 +26,7 @@
 
 2026-11-15: Phase 4.2A implements the transactional registration use case; the HTTP adapter and its security configuration remain Phase 4.2B.
 
-**Status: Phase 5.5A implemented and verified; Phase 5.5B remains unstarted.**
+**Status: Phase 5.5B implemented and verified; Phase 5.6 remains unstarted.**
 
 2026-11-15: Phase 3 and formatting approved. Phase 4.1 adds an Argon2id encoder, credential persistence port and PostgreSQL migration. Registration, authentication and operator bootstrap remain outstanding. JWT and refresh remain Phase 5.
 

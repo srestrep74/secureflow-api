@@ -19,3 +19,7 @@ When `secureflow.jwt.enabled=true` and valid external RSA keys, issuer, audience
 ## Phase 5.4B HTTP bearer integration
 
 With JWT enabled, GET /api/v1/me requires a valid, current Bearer access token and returns JSON containing only the authenticated user ID in `id`. Invalid or missing authentication returns 401 with a Bearer challenge; insufficient authority returns 403; security-state unavailability returns 503. Responses use safe Problem Details. Other application routes remain denied unless explicitly allowlisted.
+
+## Phase 5.5B refresh
+
+With JWT enabled, POST /api/v1/auth/refresh accepts only JSON refresh_token (maximum 256 characters; body maximum 4096 bytes). Success returns the login token fields with no-store and no-cache headers. Invalid structure yields 400, unsupported media 415, invalid credentials 401, classified dependency unavailability 503 and unexpected failures 500. No access JWT is needed. Use HTTPS and omit Authorization: an expired Bearer header is rejected before the controller. Logout is not implemented.

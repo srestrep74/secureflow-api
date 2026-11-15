@@ -23,7 +23,8 @@ class RegistrationBodyLimitFilter extends OncePerRequestFilter {
     protected boolean shouldNotFilter(HttpServletRequest request) {
         return !request.getMethod().equals("POST")
                 || !(request.getRequestURI().equals(request.getContextPath() + "/api/v1/auth/register")
-                        || request.getRequestURI().equals(request.getContextPath() + "/api/v1/auth/login"));
+                        || request.getRequestURI().equals(request.getContextPath() + "/api/v1/auth/login")
+                        || request.getRequestURI().equals(request.getContextPath() + "/api/v1/auth/refresh"));
     }
 
     @Override

@@ -57,6 +57,9 @@ class LoginHttpIntegrationTest {
     JwtDecoder decoder;
 
     @Autowired
+    org.springframework.security.oauth2.jwt.JwtEncoder encoder;
+
+    @Autowired
     RefreshTokenSecrets secrets;
 
     HttpResponse<String> request(String path, String body, String contentType) throws Exception {
@@ -78,6 +81,234 @@ class LoginHttpIntegrationTest {
         var matcher = Pattern.compile("\"" + name + "\"\\s*:\\s*\"([^\"]+)\"").matcher(json);
         assertThat(matcher.find()).isTrue();
         return matcher.group(1);
+    }
+
+    @Test
+    void refreshRotatesAndReplayCommitsRevocation() throws Exception {
+        var registered = request(
+                "/api/v1/auth/register",
+                "{\"username\":\"refreshuser\",\"email\":\"refresh@example.com\",\"password\":\"correct horse battery\"}",
+                "application/json");
+        assertThat(registered.statusCode()).isEqualTo(201);
+        var userId = UUID.fromString(value(registered.body(), "id"));
+        var login = login("{\"identifier\":\"refreshuser\",\"password\":\"correct horse battery\"}");
+        var access1 = value(login.body(), "access_token");
+        var refresh1 = value(login.body(), "refresh_token");
+        var family = UUID.fromString(decoder.decode(access1).getClaimAsString("sid"));
+        var expiration = jdbc.queryForObject(
+                "select expires_at from session_families where id = ?", java.sql.Timestamp.class, family);
+        var claims = new java.util.HashMap<>(decoder.decode(access1).getClaims());
+        var now = java.time.Instant.now();
+        claims.put("iat", now.minusSeconds(180));
+        claims.put("nbf", now.minusSeconds(180));
+        claims.put("exp", now.minusSeconds(120));
+        var expired = encoder.encode(org.springframework.security.oauth2.jwt.JwtEncoderParameters.from(
+                        org.springframework.security.oauth2.jwt.JwsHeader.with(
+                                        org.springframework.security.oauth2.jose.jws.SignatureAlgorithm.RS256)
+                                .keyId("test-key")
+                                .type("JWT")
+                                .build(),
+                        org.springframework.security.oauth2.jwt.JwtClaimsSet.builder()
+                                .claims(values -> values.putAll(claims))
+                                .build()))
+                .getTokenValue();
+        try (var client = HttpClient.newHttpClient()) {
+            var rejected = client.send(
+                    HttpRequest.newBuilder(URI.create("http://localhost:" + port + "/api/v1/auth/refresh"))
+                            .header("Content-Type", "application/json")
+                            .header("Authorization", "Bearer " + expired)
+                            .POST(HttpRequest.BodyPublishers.ofString("{\"refresh_token\":\"" + refresh1 + "\"}"))
+                            .build(),
+                    HttpResponse.BodyHandlers.ofString());
+            assertThat(rejected.statusCode()).isEqualTo(401);
+        }
+        var rotated = request("/api/v1/auth/refresh", "{\"refresh_token\":\"" + refresh1 + "\"}", "application/json");
+        assertThat(rotated.statusCode()).isEqualTo(200);
+        assertThat(rotated.headers().firstValue("cache-control").orElseThrow()).contains("no-store");
+        assertThat(rotated.headers().firstValue("pragma").orElseThrow()).isEqualTo("no-cache");
+        assertThat(rotated.headers().firstValue("set-cookie")).isEmpty();
+        assertThat(rotated.body())
+                .contains("\"token_type\":\"Bearer\"", "\"expires_in\":300")
+                .doesNotContain("correct horse battery", "PRIVATE KEY");
+        var access2 = value(rotated.body(), "access_token");
+        var refresh2 = value(rotated.body(), "refresh_token");
+        assertThat(access2).isNotEqualTo(access1);
+        assertThat(refresh2).isNotEqualTo(refresh1);
+        var decoded2 = decoder.decode(access2);
+        assertThat(decoded2.getClaimAsString("sid")).isEqualTo(family.toString());
+        assertThat(decoded2.getSubject()).isEqualTo(userId.toString());
+        assertThat(decoded2.getClaimAsStringList("roles")).containsExactly("ROLE_USER");
+        assertThat(java.time.Duration.between(decoded2.getIssuedAt(), decoded2.getExpiresAt())
+                        .toSeconds())
+                .isEqualTo(300);
+        assertThat(jdbc.queryForObject(
+                        "select count(*) from refresh_tokens where family_id = ? and consumed_at is null and token_digest = ?",
+                        Integer.class,
+                        family,
+                        secrets.digest(refresh2)))
+                .isEqualTo(1);
+        assertThat(jdbc.queryForObject(
+                        "select count(*) from refresh_tokens where family_id = ? and consumed_at is not null and token_digest = ?",
+                        Integer.class,
+                        family,
+                        secrets.digest(refresh1)))
+                .isEqualTo(1);
+        assertThat(jdbc.queryForObject(
+                        "select count(*) from refresh_tokens where token_digest = ?", Integer.class, refresh2))
+                .isZero();
+        assertThat(jdbc.queryForObject(
+                        "select expires_at from session_families where id = ?", java.sql.Timestamp.class, family))
+                .isEqualTo(expiration);
+        assertThat(jdbc.queryForObject(
+                        "select count(*) from session_families where user_id = ?", Integer.class, userId))
+                .isEqualTo(1);
+        assertThat(me(access1).statusCode()).isEqualTo(200);
+        var principal = me(access2);
+        assertThat(principal.statusCode()).isEqualTo(200);
+        assertThat(value(principal.body(), "id")).isEqualTo(userId.toString());
+        var replay = request("/api/v1/auth/refresh", "{\"refresh_token\":\"" + refresh1 + "\"}", "application/json");
+        assertThat(replay.statusCode()).isEqualTo(401);
+        assertThat(replay.body()).doesNotContain(refresh1, "replay", "consumed");
+        assertThat(jdbc.queryForObject(
+                        "select revoked_at is not null from session_families where id = ?", Boolean.class, family))
+                .isTrue();
+        assertThat(me(access2).statusCode()).isEqualTo(401);
+        assertThat(request("/api/v1/auth/refresh", "{\"refresh_token\":\"" + refresh2 + "\"}", "application/json")
+                        .statusCode())
+                .isEqualTo(401);
+        assertThat(jdbc.queryForObject(
+                        "select count(*) from refresh_tokens where family_id = ?", Integer.class, family))
+                .isEqualTo(2);
+    }
+
+    HttpResponse<String> me(String access) throws Exception {
+        try (var client = HttpClient.newHttpClient()) {
+            return client.send(
+                    HttpRequest.newBuilder(URI.create("http://localhost:" + port + "/api/v1/me"))
+                            .header("Authorization", "Bearer " + access)
+                            .GET()
+                            .build(),
+                    HttpResponse.BodyHandlers.ofString());
+        }
+    }
+
+    @Test
+    void rejectsInactiveExpiredAndRevokedSessionsWithoutIssuingSuccessors() throws Exception {
+        var registered = request(
+                "/api/v1/auth/register",
+                "{\"username\":\"refreshstate\",\"email\":\"refreshstate@example.com\",\"password\":\"correct horse battery\"}",
+                "application/json");
+        var user = UUID.fromString(value(registered.body(), "id"));
+        var login = login("{\"identifier\":\"refreshstate\",\"password\":\"correct horse battery\"}");
+        var token = value(login.body(), "refresh_token");
+        var family = UUID.fromString(
+                decoder.decode(value(login.body(), "access_token")).getClaimAsString("sid"));
+        var body = "{\"refresh_token\":\"" + token + "\"}";
+        jdbc.update("update users set status = 'INACTIVE' where id = ?", user);
+        var inactive = request("/api/v1/auth/refresh", body, "application/json");
+        assertThat(inactive.statusCode()).isEqualTo(401);
+        jdbc.update("update users set status = 'ACTIVE' where id = ?", user);
+        jdbc.update(
+                "update refresh_tokens set issued_at = now() - interval '2 days', expires_at = now() - interval '1 day' where family_id = ?",
+                family);
+        var expired = request("/api/v1/auth/refresh", body, "application/json");
+        assertThat(expired.statusCode()).isEqualTo(401);
+        jdbc.update(
+                "update refresh_tokens set issued_at = f.created_at, expires_at = f.expires_at from session_families f where refresh_tokens.family_id = f.id and f.id = ?",
+                family);
+        jdbc.update("update session_families set revoked_at = created_at where id = ?", family);
+        var revoked = request("/api/v1/auth/refresh", body, "application/json");
+        assertThat(revoked.statusCode()).isEqualTo(401);
+        jdbc.update(
+                "update session_families set revoked_at = null, created_at = now() - interval '31 days', expires_at = now() - interval '1 day' where id = ?",
+                family);
+        var expiredFamily = request("/api/v1/auth/refresh", body, "application/json");
+        assertThat(expiredFamily.statusCode()).isEqualTo(401);
+        assertThat(expired.body())
+                .isEqualTo(inactive.body())
+                .isEqualTo(revoked.body())
+                .isEqualTo(expiredFamily.body())
+                .doesNotContain(token);
+        assertThat(jdbc.queryForObject(
+                        "select count(*) from refresh_tokens where family_id = ?", Integer.class, family))
+                .isEqualTo(1);
+        assertThat(jdbc.queryForObject("select count(*) from session_families where user_id = ?", Integer.class, user))
+                .isEqualTo(1);
+    }
+
+    @Test
+    void unexpectedRefreshFailureIsNotClassifiedAsUnavailable() throws Exception {
+        var registered = request(
+                "/api/v1/auth/register",
+                "{\"username\":\"refreshfailure\",\"email\":\"refreshfailure@example.com\",\"password\":\"correct horse battery\"}",
+                "application/json");
+        assertThat(registered.statusCode()).isEqualTo(201);
+        var login = login("{\"identifier\":\"refreshfailure\",\"password\":\"correct horse battery\"}");
+        var token = value(login.body(), "refresh_token");
+        doThrow(new IllegalStateException("sensitive failure")).when(sessions).rotate(any(), any(), any());
+        var response = request("/api/v1/auth/refresh", "{\"refresh_token\":\"" + token + "\"}", "application/json");
+        assertThat(response.statusCode()).isEqualTo(500);
+        assertThat(response.body()).doesNotContain(token, "sensitive failure", "access_token", "refresh_token");
+        assertThat(jdbc.queryForObject(
+                        "select consumed_at is null from refresh_tokens where token_digest = ?",
+                        Boolean.class,
+                        secrets.digest(token)))
+                .isTrue();
+    }
+
+    @Test
+    void refreshInfrastructureFailureDoesNotReturnTokens() throws Exception {
+        var registered = request(
+                "/api/v1/auth/register",
+                "{\"username\":\"refreshoutage\",\"email\":\"refreshoutage@example.com\",\"password\":\"correct horse battery\"}",
+                "application/json");
+        assertThat(registered.statusCode()).isEqualTo(201);
+        var login = login("{\"identifier\":\"refreshoutage\",\"password\":\"correct horse battery\"}");
+        var token = value(login.body(), "refresh_token");
+        doThrow(new DataAccessResourceFailureException("simulated outage"))
+                .when(sessions)
+                .rotate(any(), any(), any());
+        var response = request("/api/v1/auth/refresh", "{\"refresh_token\":\"" + token + "\"}", "application/json");
+        assertThat(response.statusCode()).isEqualTo(503);
+        assertThat(response.body()).doesNotContain(token, "outage", "access_token", "refresh_token");
+        assertThat(jdbc.queryForObject(
+                        "select consumed_at is null from refresh_tokens where token_digest = ?",
+                        Boolean.class,
+                        secrets.digest(token)))
+                .isTrue();
+    }
+
+    @Test
+    void rejectsInvalidRefreshBodies() throws Exception {
+        for (var body : new String[] {
+            "",
+            "{}",
+            "{\"refresh_token\":null}",
+            "{\"refresh_token\":\" \"}",
+            "{",
+            "{\"refresh_token\":\"x\",\"role\":\"ADMIN\"}",
+            "{\"refresh_token\":\"" + "a".repeat(257) + "\"}"
+        }) {
+            assertThat(request("/api/v1/auth/refresh", body, "application/json").statusCode())
+                    .isEqualTo(400);
+        }
+        var invalid = request("/api/v1/auth/refresh", "{\"refresh_token\":\"secret-invalid\"}", "application/json");
+        assertThat(invalid.statusCode()).isEqualTo(401);
+        assertThat(invalid.body()).doesNotContain("secret-invalid");
+        assertThat(request("/api/v1/auth/refresh", "{\"refresh_token\":123}", "application/json")
+                        .statusCode())
+                .isEqualTo(400);
+        assertThat(request(
+                                "/api/v1/auth/refresh",
+                                "{\"refresh_token\":\"" + "a".repeat(5000) + "\"}",
+                                "application/json")
+                        .statusCode())
+                .isEqualTo(400);
+        assertThat(request("/api/v1/auth/refresh", "{\"refresh_token\":\"" + "a".repeat(43) + "\"}", "application/json")
+                        .statusCode())
+                .isEqualTo(401);
+        assertThat(request("/api/v1/auth/refresh", "x", "text/plain").statusCode())
+                .isEqualTo(415);
     }
 
     @Test
@@ -137,7 +368,8 @@ class LoginHttpIntegrationTest {
                             .GET()
                             .build(),
                     HttpResponse.BodyHandlers.ofString());
-            assertThat(docs.body()).contains("/api/v1/auth/login", "access_token", "refresh_token");
+            assertThat(docs.body())
+                    .contains("/api/v1/auth/login", "/api/v1/auth/refresh", "access_token", "refresh_token");
         }
     }
 

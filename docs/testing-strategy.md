@@ -35,3 +35,7 @@ HTTP integration tests use real RS256 tokens, a running web server and PostgreSQ
 ## Phase 5.5A refresh verification
 
 PostgreSQL 17 integration tests exercise real signing and decoding, digest persistence, current role changes, expiration, replay revocation and bearer rejection. Coordinated transactions hold the first issuance while PostgreSQL reports the second waiting on the user lock; the second then detects replay. Database triggers inject consumption, insertion and deferred commit failures, including replay revocation commit; signing failure is injected through the application token port. These tests are not a production load measurement or a running database outage. Foreign keys prevent a family from referencing a deleted user in the normal schema; the defensive missing-user branch is not established by such a database state.
+
+## Refresh HTTP verification
+
+HTTP integration coverage uses PostgreSQL 17 Testcontainers and RS256 issuance to exercise rotation, persisted digests, replay revocation and resource-server rejection. A simulated persistence failure tests error translation and rollback; it is not a real PostgreSQL outage. Existing transaction, concurrency and architecture tests remain applicable.

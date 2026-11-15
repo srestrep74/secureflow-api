@@ -11,5 +11,6 @@ class LoginDtoTest {
                 .doesNotContain("sample", "secret-password");
         assertThat(new LoginResponse("access-secret", "refresh-secret", "Bearer", 300).toString())
                 .doesNotContain("access-secret", "refresh-secret");
+        assertThat(new RefreshRequest("refresh-secret").toString()).doesNotContain("refresh-secret");
     }
 }

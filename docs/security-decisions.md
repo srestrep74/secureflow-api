@@ -59,3 +59,7 @@ The Resource Server is enabled only with the existing JWT activation and valid e
 ## Phase 5.5A rotation and replay
 
 Opaque 256-bit refresh credentials are persisted only as SHA-256 digests. The unique digest index supports bounded lookup; the partial unique index enforces one unconsumed token per family. User then family row locks serialize all compliant writers across application instances. This order also serializes separate families of one user; lock waits and throughput have not been measured. Consumed history is retained. No cache or process-local lock participates. Strict replay revokes a known unexpired family even for simultaneous legitimate retries or a lost response. Typed outcomes allow revocation to commit without an unchecked exception rolling it back; failures during consumption, insertion, signing or commit roll back and fail closed. A database outage was not separately exercised for refresh. Direct SQL writers that bypass the locking protocol remain unsupported.
+
+## Refresh deployment considerations
+
+Require HTTPS in deployment. Provide login and refresh abuse protection and rate limiting, redact credentials in logs and tracing, retain and clean refresh history, plan overlapping RSA key rotation, ensure PostgreSQL availability, and monitor abnormal refresh failures and suspected replay. These controls are not established by the HTTP adapter; deployment transport security has not been verified.

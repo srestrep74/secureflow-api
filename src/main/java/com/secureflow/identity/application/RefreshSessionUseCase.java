@@ -35,7 +35,7 @@ public final class RefreshSessionUseCase {
         } catch (IllegalArgumentException ex) {
             throw new InvalidRefreshTokenException();
         } catch (RuntimeException ex) {
-            throw new RefreshUnavailableException();
+            throw new RefreshUnavailableException(ex);
         }
         RefreshOutcome outcome;
         try {
@@ -72,7 +72,7 @@ public final class RefreshSessionUseCase {
             });
             if (outcome == null) throw new RefreshUnavailableException();
         } catch (RuntimeException ex) {
-            throw new RefreshUnavailableException();
+            throw new RefreshUnavailableException(ex);
         }
         return switch (outcome.status()) {
             case INVALID -> throw new InvalidRefreshTokenException();

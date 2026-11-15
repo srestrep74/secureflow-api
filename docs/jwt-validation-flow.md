@@ -28,4 +28,8 @@ NimbusJwtDecoder enforces RS256, the trusted key ID, issuer, audience, lifetime,
 
 ## Refresh and current access tokens
 
-Phase 5.5A creates an RS256 access JWT from current roles, user security version and compatible catalog version under the user lock. The existing online state check rejects the family after replay revocation commits. Requests already authorized before revocation may complete. The refresh use case does not require an access JWT; HTTP delivery remains Phase 5.5B.
+Phase 5.5A creates an RS256 access JWT from current roles, user security version and compatible catalog version under the user lock. The existing online state check rejects the family after replay revocation commits. Requests already authorized before revocation may complete. The refresh use case does not require an access JWT.
+
+## Refresh HTTP interaction
+
+Refresh needs no access JWT. Resource Server processes any supplied Bearer header, so an expired token is rejected before the public refresh controller. Omit that header. The new RS256 JWT uses the same family and current server-side authorities; replay revocation causes subsequent family-bound JWT authentication to fail.

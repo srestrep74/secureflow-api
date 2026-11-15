@@ -2,6 +2,9 @@ package com.secureflow.identity.web;
 
 import com.secureflow.identity.application.AuthenticationUnavailableException;
 import com.secureflow.identity.application.InvalidCredentialsException;
+import com.secureflow.identity.application.InvalidRefreshTokenException;
+import com.secureflow.identity.application.RefreshReplayException;
+import com.secureflow.identity.application.RefreshUnavailableException;
 import com.secureflow.shared.application.IntegrityConflictException;
 import jakarta.servlet.http.HttpServletRequest;
 import org.hibernate.exception.ConstraintViolationException;
@@ -17,6 +20,11 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 @RestControllerAdvice
 class RegistrationErrors {
+    @ExceptionHandler({InvalidRefreshTokenException.class, RefreshReplayException.class})
+    ProblemDetail invalidRefresh(Exception exception) {
+        return problem(HttpStatus.UNAUTHORIZED, "Refresh credential rejected; authenticate again");
+    }
+
     @ExceptionHandler(InvalidCredentialsException.class)
     ProblemDetail invalidCredentials(Exception exception) {
         return problem(HttpStatus.UNAUTHORIZED, "Invalid credentials");
@@ -60,6 +68,18 @@ class RegistrationErrors {
     @ExceptionHandler({DataAccessResourceFailureException.class, AuthenticationUnavailableException.class})
     ProblemDetail unavailable(Exception exception) {
         return problem(HttpStatus.SERVICE_UNAVAILABLE, "Service temporarily unavailable");
+    }
+
+    @ExceptionHandler(RefreshUnavailableException.class)
+    ProblemDetail refreshFailure(RefreshUnavailableException exception) {
+        for (Throwable cause = exception; cause != null; cause = cause.getCause()) {
+            if (cause instanceof DataAccessResourceFailureException
+                    || cause instanceof com.secureflow.identity.application.SecurityStateUnavailableException
+                    || cause instanceof org.springframework.transaction.CannotCreateTransactionException) {
+                return problem(HttpStatus.SERVICE_UNAVAILABLE, "Service temporarily unavailable");
+            }
+        }
+        return problem(HttpStatus.INTERNAL_SERVER_ERROR, "Internal server error");
     }
 
     @ExceptionHandler(Exception.class)

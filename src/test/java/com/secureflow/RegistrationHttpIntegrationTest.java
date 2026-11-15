@@ -137,6 +137,13 @@ class RegistrationHttpIntegrationTest {
             assertThat(client.send(request, HttpResponse.BodyHandlers.ofString())
                             .statusCode())
                     .isIn(401, 403, 404);
+            var refresh = HttpRequest.newBuilder(URI.create("http://localhost:" + port + "/api/v1/auth/refresh"))
+                    .header("Content-Type", "application/json")
+                    .POST(HttpRequest.BodyPublishers.ofString("{\"refresh_token\":\"invalid\"}"))
+                    .build();
+            assertThat(client.send(refresh, HttpResponse.BodyHandlers.ofString())
+                            .statusCode())
+                    .isIn(401, 403, 404);
             assertThat(jdbc.queryForObject("select count(*) from session_families", Integer.class))
                     .isZero();
         }
