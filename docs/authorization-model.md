@@ -17,3 +17,7 @@ The `ActiveAdministratorPolicy` and the shared guard provide the coordination ne
 Phase 5.1B encodes roles as `ROLE_` names and permissions as a separate JSON string array. The single local catalog derives the exact permission union and validates it against the signed role snapshot. Catalog version 1 is the only version this binary understands. The durable catalog, transactional snapshot and authoritative version checks remain future work; signed claims alone are insufficient for authorization.
 
 Phase 5.4A persists the global authorization catalog version in `authorization_catalog_state` and checks it against both trusted token claims and the compiled role-permission catalog. User security versions track effective role and status changes independently. A catalog deployment must coordinate the migration and binaries: old binaries fail closed against a new database version, and tokens carrying an older version are invalid. The mapping itself remains compiled, not dynamically administered.
+
+## Phase 5.4B HTTP bearer integration
+
+After current-state validation, exact validated role names and permissions become GrantedAuthority values; roles are not prefixed again and scopes are not synthesized. GET /api/v1/me requires authentication; unimplemented routes remain denied. An authenticated principal lacking a required authority receives 403. Task and ownership authorization are deferred.

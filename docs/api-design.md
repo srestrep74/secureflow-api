@@ -1,4 +1,4 @@
-﻿# API Design
+# API Design
 
 **Status: Phase 0 approved on 2026-11-15; later implementation remains phase-gated.**
 
@@ -14,4 +14,8 @@ Errors use Problem Details with generic descriptions: malformed or invalid input
 
 ## Phase 5.3B login
 
-When `secureflow.jwt.enabled=true` and valid external RSA keys, issuer, audience and key ID are configured, `POST /api/v1/auth/login` accepts only `identifier` (username or email) and `password`. The JSON body is limited to 4096 bytes; passwords are never normalized. Successful responses contain `access_token`, `refresh_token`, `token_type` (`Bearer`) and `expires_in` (currently 300 seconds), with `Cache-Control: no-store` and `Pragma: no-cache`. The snake_case response explicitly follows the Phase 5.3B contract, superseding the camelCase example in the earlier consolidated design. No authentication cookies are used. Invalid structure returns 400, unsupported content types 415, rejected credentials 401, classified dependency unavailability 503 and unexpected failures 500. Errors do not return credentials. Enforce HTTPS at deployment. JWT authentication for protected endpoints is not implemented. OpenAPI remains disabled by default.
+When `secureflow.jwt.enabled=true` and valid external RSA keys, issuer, audience and key ID are configured, `POST /api/v1/auth/login` accepts only `identifier` (username or email) and `password`. The JSON body is limited to 4096 bytes; passwords are never normalized. Successful responses contain `access_token`, `refresh_token`, `token_type` (`Bearer`) and `expires_in` (currently 300 seconds), with `Cache-Control: no-store` and `Pragma: no-cache`. The snake_case response explicitly follows the Phase 5.3B contract, superseding the camelCase example in the earlier consolidated design. No authentication cookies are used. Invalid structure returns 400, unsupported content types 415, rejected credentials 401, classified dependency unavailability 503 and unexpected failures 500. Errors do not return credentials. Enforce HTTPS at deployment. OpenAPI remains disabled by default.
+
+## Phase 5.4B HTTP bearer integration
+
+With JWT enabled, GET /api/v1/me requires a valid, current Bearer access token and returns JSON containing only the authenticated user ID in `id`. Invalid or missing authentication returns 401 with a Bearer challenge; insufficient authority returns 403; security-state unavailability returns 503. Responses use safe Problem Details. Other application routes remain denied unless explicitly allowlisted.

@@ -31,3 +31,7 @@ Security-state writers must update and lock the user row in the same transaction
 ## Phase 5.3B: HTTP login
 
 The stateless security chain permits POST login only when JWT is enabled. The controller maps the validated JSON to `LoginCommand` and delegates to `LoginUseCase`. AuthenticationManager runs through the existing credential adapter without establishing an HTTP session or authenticated security context. The transaction persists the session and refresh digest and signs the access JWT before commit; the controller returns tokens only after the use case completes. A lost HTTP response after commit can leave a valid abandoned session until expiry and future cleanup. A signed JWT cannot authenticate protected HTTP requests until Phase 5.4 implements Resource Server and online security-state validation.
+
+## Phase 5.4B HTTP bearer integration
+
+The opt-in Resource Server extracts Bearer tokens and authenticates each request through JwtAuthenticationProvider and the configured NimbusJwtDecoder. After claims validation, StatefulJwtAuthenticationConverter invokes SecurityStateValidator before constructing authentication. The SecurityContext is request-bound and stateless; no HTTP session is created. Database unavailability is 503, invalid token or current state is 401, and insufficient authority is 403. Refresh and logout remain deferred.

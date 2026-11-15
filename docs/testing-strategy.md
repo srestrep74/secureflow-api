@@ -27,3 +27,7 @@ HTTP integration coverage uses PostgreSQL Testcontainers, the real credential pr
 Phase 5.4A adds PostgreSQL 17 Testcontainers coverage for state projections, missing or foreign accounts and sessions, role/status changes, expiration and idempotent revocation, catalog initialization and incompatibility, and schema indexes. A separate connection to an unavailable local PostgreSQL port tests sanitized failure classification; this is a broken-connection test, not a running server outage. Existing HTTP, JWT, persistence and architecture suites remain regression gates. No latency benchmark or representative query plan is claimed.
 
 A coordinated two-transaction test checks the committed account and family projection before and after a combined change. The final Gradle check executed 115 tests with no failures or skips, including five security-state integration tests and 11 architecture rules.
+
+## Phase 5.4B HTTP bearer integration
+
+HTTP integration tests use real RS256 tokens, a running web server and PostgreSQL 17 Testcontainers. They cover current-state rejection, signed invalid claims, 401/403/503 distinctions, explicit authority mapping and concurrent principal isolation. The classified database failure test injects an exception; it does not simulate an outage of a running PostgreSQL server. The test-only protected controller and security chain exercise role and permission checks without publishing a production diagnostic route.
