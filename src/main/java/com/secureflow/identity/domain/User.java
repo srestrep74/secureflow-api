@@ -25,6 +25,17 @@ public final class User {
         return new User(id, username, email);
     }
 
+    public static User reconstitute(UserId id, Username username, EmailAddress email, Set<Role> roles,
+                                    AccountStatus status, long securityVersion) {
+        if (securityVersion < 0) throw new IllegalArgumentException("Security version cannot be negative");
+        User user = new User(id, username, email);
+        user.roles.clear();
+        user.roles.addAll(Objects.requireNonNull(roles, "roles"));
+        user.status = Objects.requireNonNull(status, "status");
+        user.securityVersion = securityVersion;
+        return user;
+    }
+
     public UserId id() { return id; }
     public Username username() { return username; }
     public EmailAddress email() { return email; }

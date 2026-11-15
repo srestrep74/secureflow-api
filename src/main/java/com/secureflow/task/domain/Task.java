@@ -28,6 +28,17 @@ public final class Task {
         return new Task(id, ownerId, title, description, now);
     }
 
+    public static Task reconstitute(TaskId id, UserId ownerId, TaskTitle title, String description,
+                                    TaskStatus status, Instant createdAt, Instant modifiedAt, long version) {
+        Task task = new Task(id, ownerId, title, description, createdAt);
+        task.validateTime(modifiedAt);
+        if (version < 0) throw new IllegalArgumentException("Version cannot be negative");
+        task.status = Objects.requireNonNull(status, "status");
+        task.modifiedAt = modifiedAt;
+        task.version = version;
+        return task;
+    }
+
     public TaskId id() { return id; }
     public UserId ownerId() { return ownerId; }
     public TaskTitle title() { return title; }

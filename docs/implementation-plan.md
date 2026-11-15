@@ -1,6 +1,8 @@
 # Implementation Plan
 
-**Status: Phase 2 approved; Phase 3 authorized, not yet implemented.**
+**Status: Phase 3 implemented and verified; awaiting review before Phase 4.**
+
+Phase 3 checklist (2026-11-15): repository ports and JPA adapters, aggregate reconstruction, Flyway business schema, normalized uniqueness, ownership foreign key, optimistic locking and PostgreSQL integration tests implemented. `gradlew.bat clean check --no-daemon` passed with 24 tests. Phase 4 has not started.
 
 2026-11-15: Phase 2 approved and Phase 3 authorized. Persistence adapters, database constraints, aggregate reconstitution, concurrency verification and documentation remain outstanding.
 

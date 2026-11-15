@@ -1,6 +1,8 @@
 # Project Status
 
-**Status: Phase 2 approved; Phase 3 authorized, not yet implemented.**
+**Status: Phase 3 implemented and verified; awaiting review before Phase 4.**
+
+2026-11-15: Implemented User and Task repository ports, JPA adapters, validated reconstruction, Flyway schema and optimistic concurrency. `gradlew.bat clean check --no-daemon` passed: 24 tests, including 8 architecture checks and 6 PostgreSQL persistence integration tests. Two coordinated transactions demonstrated rejection of a stale Task write and preservation of the committed change. PostgreSQL production deployment and later authentication and authorization remain unverified.
 
 2026-11-15: The user approved Phase 2 and authorized Phase 3 persistence work. The Phase 2 domain version counts effective in-memory task mutations; persistence must preserve this contract while detecting concurrent writes. Phase 3 implementation and verification remain outstanding.
 
