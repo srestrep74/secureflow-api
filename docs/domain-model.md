@@ -1,7 +1,7 @@
 ﻿# Domain Model
 
-**Status: Phase 0 approved on 2026-11-15; later implementation remains phase-gated.**
+Identity owns `User`, `Username`, `EmailAddress`, `Role` and `AccountStatus`. Registration creates an active user with only USER and security version zero. Effective role and status changes increment that version; repeated requests are no-ops. Username and email are trimmed and canonicalized to lowercase ASCII; uniqueness is a database responsibility. Email uses a pragmatic ASCII syntax. User exposes immutable role snapshots. Credential hashing and storage are deferred; no plaintext or hash is modeled here.
 
-User and Task are aggregate roots. PostgreSQL enforces username/email uniqueness. Task enforces its transitions and immutable owner. Fixed role catalog is not an aggregate. Refresh family is a technical consistency boundary. Domain never depends on application actor.
+Task owns `Task`, `TaskId`, `TaskTitle` and `TaskStatus`. `UserId` is a neutral shared UUID value; Task references it without a User object. Task starts in TODO with immutable owner and timestamps supplied by its caller. Title is stripped and limited to 200 UTF-16 code units, description is nullable and limited to 4000 UTF-16 code units. Task mutations cannot move modification time backwards. Each effective edit or transition increments its version; no-ops do not. A failed validation leaves state unchanged. Optimistic concurrency requires a conditional database write in Phase 3.
 
-See the [consolidated Phase 0 design](phase-0-design.md) for the complete contract, trade-offs and approval gate.
+Inputs use `NullPointerException` for missing required arguments, `IllegalArgumentException` for invalid values, and `IllegalStateException` for forbidden transitions; numeric overflow fails with `ArithmeticException`. These are domain contracts, not HTTP responses.

@@ -1,10 +1,12 @@
 # Project Status
 
-**Status: Phase 0 and Phase 1 approved; Phase 2 authorized.**
+**Status: Phase 2 implemented and verified; Phase 3 requires approval.**
+
+2026-11-15: Implemented independent User and Task domain aggregates, value objects, local invariants and ArchUnit boundaries. `gradlew.bat clean check --no-daemon` executed successfully, followed by `gradlew.bat check --no-daemon` after validation changes: 11 tests passed, including three architecture rules and two PostgreSQL Testcontainers integration tests. The last check was up-to-date. Persistence reconstitution, uniqueness, transactional concurrency, authorization and credential management remain future work. No Phase 3 implementation is authorized.
 
 2026-11-15: The user approved Phase 1 and authorized Phase 2. The Compose smoke test started PostgreSQL 17 and its health check reached `healthy`; the isolated test container, network and volume were removed afterward. This verifies Compose startup, not production configuration.
 
-2026-11-15: The user approved Phase 0 and ADR-0001 through ADR-0005 and authorized Phase 1 bootstrap. The original requirements file remains unchanged. Phase 1 foundation created with Java 25, Gradle 9.9.1, Spring Boot 4.0.9, PostgreSQL, Flyway and OpenAPI. The Gradle Wrapper resolved dependencies and `compileJava compileTestJava` passed. `gradlew.bat check --no-daemon` passed after the final changes: two integration tests started the web application with PostgreSQL Testcontainers, checked database connectivity and Flyway migration history, and verified health and enabled OpenAPI over HTTP. Production configuration remains unverified. No domain, authentication or authorization functionality has been implemented yet.
+2026-11-15: The user approved Phase 0 and ADR-0001 through ADR-0005 and authorized Phase 1 bootstrap. The original requirements file remains unchanged. Phase 1 foundation created with Java 25, Gradle 9.9.1, Spring Boot 4.0.9, PostgreSQL, Flyway and OpenAPI. The Gradle Wrapper resolved dependencies and `compileJava compileTestJava` passed. `gradlew.bat check --no-daemon` passed after the final changes: two integration tests started the web application with PostgreSQL Testcontainers, checked database connectivity and Flyway migration history, and verified health and enabled OpenAPI over HTTP. Production configuration remains unverified. Authentication and authorization functionality has not yet been implemented.
 
 Approved security-state design: PostgreSQL primary remains authoritative; use one indexed projection and a replaceable port, signed version-bound authority snapshots and atomic refresh rotation. Redis is a future option only. Documentation review does not establish query performance or transaction correctness; these require implementation and tests in the approved later phase.
 
