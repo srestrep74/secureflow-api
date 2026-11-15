@@ -63,3 +63,7 @@ Opaque 256-bit refresh credentials are persisted only as SHA-256 digests. The un
 ## Refresh deployment considerations
 
 Require HTTPS in deployment. Provide login and refresh abuse protection and rate limiting, redact credentials in logs and tracing, retain and clean refresh history, plan overlapping RSA key rotation, ensure PostgreSQL availability, and monitor abnormal refresh failures and suspected replay. These controls are not established by the HTTP adapter; deployment transport security has not been verified.
+
+## Current-session logout
+
+Logout uses the existing user-then-family PostgreSQL row-lock protocol and family revocation. Idempotent repeated revocation preserves the first timestamp without updating the row. Invalid context and infrastructure failure are distinct application outcomes. Session-specific revocation does not change account security version or roles; direct writers that bypass the protocol remain unsupported. The endpoint and principal extraction remain Phase 5.6B.

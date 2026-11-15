@@ -1,5 +1,8 @@
 # Implementation Plan
 
+2026-11-15: Phase 5.6A implements transactional current-session logout with user-then-family row locks, ownership checks, idempotent revocation and fail-closed transaction errors. `spotlessApply`, `spotlessCheck` and `clean check --no-daemon` passed: 139 tests, no failures or skips, including 11 architecture checks, PostgreSQL contention in both refresh/logout orders, rollback and deferred commit failures, bearer invalidation and session isolation. A running PostgreSQL outage was not tested. HTTP logout and principal extraction remain Phase 5.6B.
+
+
 2026-11-15: Phase 5.5B adds the opt-in refresh HTTP adapter, validation, generic errors, cache controls, OpenAPI and PostgreSQL HTTP integration coverage. `spotlessApply`, `spotlessCheck`, and `clean check --no-daemon` passed: 136 tests, no failures or skips. Dependency failure was simulated; a running PostgreSQL outage and deployed HTTPS were not tested. Phase 5.6 logout remains unstarted.
 
 2026-11-15: Phase 5.5A implements application-level atomic refresh rotation and strict replay revocation. `spotlessApply`, `spotlessCheck`, and `clean check --no-daemon` passed: 131 tests, no failures or skips, including PostgreSQL lock contention, rollback and deferred commit failures, bearer revocation and architecture regression tests. A running database outage and a missing user behind the enforced foreign key were not exercised. HTTP refresh and logout remain unimplemented.
@@ -26,7 +29,7 @@
 
 2026-11-15: Phase 4.2A implements the transactional registration use case; the HTTP adapter and its security configuration remain Phase 4.2B.
 
-**Status: Phase 5.5B implemented and verified; Phase 5.6 remains unstarted.**
+**Status: Phase 5.6A implemented and verified; Phase 5.6B remains unstarted.**
 
 2026-11-15: Phase 3 and formatting approved. Phase 4.1 adds an Argon2id encoder, credential persistence port and PostgreSQL migration. Registration, authentication and operator bootstrap remain outstanding. JWT and refresh remain Phase 5.
 

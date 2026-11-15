@@ -45,3 +45,9 @@ A known consumed token presented before expiry causes family revocation and a ty
 ## Phase 5.5B HTTP refresh
 
 The controller delegates without an encompassing transaction. Rotation consumes the old digest and inserts its successor in the same family without extending expiry. Replay commits family revocation before the generic HTTP 401. Clients must atomically replace the refresh credential and serialize refresh attempts; a lost response or concurrent reuse requires authentication again. Normal rotation leaves unexpired access JWTs valid; replay revocation invalidates the family through current-state checks.
+
+## Phase 5.6A current-session logout
+
+The application accepts a trusted user and family identity, never a public client-selected session. A new transaction locks the user row then the owned family row and reloads family state before revoking it. A missing user, foreign or missing family, invalid input or inactive unrevoked family is an invalid context; an already revoked owned family succeeds without a write. Database and commit failures are unavailable outcomes. The transaction commits before completion is returned. No credentials, roles, security version, expiration, or other families are changed.
+
+Refresh follows the same lock order. If logout commits first, refresh rejects the revoked family; if refresh commits first, logout revokes the same family including its successor. Existing online checks reject access JWTs after the revocation commits; previously authenticated requests may finish. Phase 5.6B must derive the trusted identities from the authenticated principal and expose the HTTP contract.

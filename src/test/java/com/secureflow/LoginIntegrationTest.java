@@ -475,6 +475,119 @@ class LoginIntegrationTest {
         }
     }
 
+    @Autowired
+    LogoutCurrentSessionUseCase logout;
+
+    @Test
+    void logoutRollsBackImmediateAndDeferredDatabaseFailures() {
+        var user = register.register(
+                new RegisterUserCommand("logoutfailure", "logoutfailure@example.com", "correct horse battery"));
+        var initial = login.login(new LoginCommand("logoutfailure", "correct horse battery"));
+        var sid = UUID.fromString(decoder.decode(initial.accessToken()).getClaimAsString("sid"));
+        var command = new LogoutCurrentSessionCommand(user.userId().value(), sid);
+        jdbc.execute(
+                "create function test_logout_failure() returns trigger language plpgsql as 'begin raise exception ''injected failure''; end'");
+        try {
+            jdbc.execute(
+                    "create trigger test_logout_failure before update on session_families for each row execute function test_logout_failure()");
+            assertThatThrownBy(() -> logout.logout(command)).isInstanceOf(LogoutUnavailableException.class);
+            assertThat(sessions.findFamily(sid).orElseThrow().revokedAt()).isNull();
+            jdbc.execute("drop trigger test_logout_failure on session_families");
+            jdbc.execute(
+                    "create constraint trigger test_logout_failure after update on session_families deferrable initially deferred for each row execute function test_logout_failure()");
+            assertThatThrownBy(() -> logout.logout(command)).isInstanceOf(LogoutUnavailableException.class);
+            assertThat(sessions.findFamily(sid).orElseThrow().revokedAt()).isNull();
+        } finally {
+            jdbc.execute("drop trigger if exists test_logout_failure on session_families");
+            jdbc.execute("drop function test_logout_failure()");
+        }
+        logout.logout(command);
+        assertThat(securityState.findCurrentState(user.userId(), sid).sessionRevoked())
+                .isTrue();
+    }
+
+    @Test
+    void logoutAndRefreshSerializeInBothOrders() throws Exception {
+        var user = register.register(
+                new RegisterUserCommand("logoutrace", "logoutrace@example.com", "correct horse battery"));
+        for (boolean logoutFirst : new boolean[] {true, false}) {
+            var initial = login.login(new LoginCommand("logoutrace", "correct horse battery"));
+            var sid = UUID.fromString(decoder.decode(initial.accessToken()).getClaimAsString("sid"));
+            var command = new LogoutCurrentSessionCommand(user.userId().value(), sid);
+            var entered = new java.util.concurrent.CountDownLatch(1);
+            var release = new java.util.concurrent.CountDownLatch(1);
+            RefreshTransactionPort held = new RefreshTransactionPort() {
+                public boolean executeForSession(
+                        com.secureflow.shared.domain.UserId id, UUID family, java.util.function.BooleanSupplier op) {
+                    return refreshTransaction.executeForSession(id, family, () -> {
+                        awaitRelease(entered, release);
+                        return op.getAsBoolean();
+                    });
+                }
+
+                public RefreshOutcome execute(
+                        String digest,
+                        java.util.function.BiFunction<com.secureflow.shared.domain.UserId, UUID, RefreshOutcome> op) {
+                    return refreshTransaction.execute(digest, (id, family) -> {
+                        awaitRelease(entered, release);
+                        return op.apply(id, family);
+                    });
+                }
+            };
+            var heldLogout = new LogoutCurrentSessionUseCase(sessions, held, Clock.systemUTC());
+            var heldRefresh =
+                    new RefreshSessionUseCase(users, sessions, securityState, tokens, held, Clock.systemUTC());
+            try (var executor = java.util.concurrent.Executors.newFixedThreadPool(2)) {
+                var first = executor.submit(() -> logoutFirst
+                        ? catchThrowable(() -> heldLogout.logout(command))
+                        : heldRefresh.refresh(new RefreshSessionCommand(initial.refreshToken())));
+                try {
+                    assertThat(entered.await(20, java.util.concurrent.TimeUnit.SECONDS))
+                            .isTrue();
+                    var second = executor.submit(() -> logoutFirst
+                            ? catchThrowable(() -> refresh.refresh(new RefreshSessionCommand(initial.refreshToken())))
+                            : catchThrowable(() -> logout.logout(command)));
+                    long deadline = System.nanoTime() + java.util.concurrent.TimeUnit.SECONDS.toNanos(15);
+                    boolean blocked = false;
+                    while (System.nanoTime() < deadline && !blocked) {
+                        blocked = jdbc.queryForObject(
+                                "select exists(select 1 from pg_stat_activity where datname = current_database() and wait_event_type = 'Lock' and query like 'select id from users where id =%')",
+                                Boolean.class);
+                        Thread.onSpinWait();
+                    }
+                    assertThat(blocked).isTrue();
+                    release.countDown();
+                    var firstResult = first.get(20, java.util.concurrent.TimeUnit.SECONDS);
+                    var secondResult = second.get(20, java.util.concurrent.TimeUnit.SECONDS);
+                    if (logoutFirst) {
+                        assertThat(firstResult).isNull();
+                        assertThat(secondResult).isInstanceOf(InvalidRefreshTokenException.class);
+                    } else {
+                        assertThat(secondResult).isNull();
+                        var successor = (RefreshSessionResult) firstResult;
+                        assertThatThrownBy(() -> refresh.refresh(new RefreshSessionCommand(successor.refreshToken())))
+                                .isInstanceOf(InvalidRefreshTokenException.class);
+                    }
+                    assertThat(sessions.findFamily(sid).orElseThrow().revokedAt())
+                            .isNotNull();
+                } finally {
+                    release.countDown();
+                }
+            }
+        }
+    }
+
+    private static void awaitRelease(
+            java.util.concurrent.CountDownLatch entered, java.util.concurrent.CountDownLatch release) {
+        entered.countDown();
+        try {
+            if (!release.await(20, java.util.concurrent.TimeUnit.SECONDS)) throw new IllegalStateException("Timeout");
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new IllegalStateException(e);
+        }
+    }
+
     LoginTokenPort wrappedTokens(String successorDigest, boolean failSigning) {
         return new LoginTokenPort() {
             int calls;

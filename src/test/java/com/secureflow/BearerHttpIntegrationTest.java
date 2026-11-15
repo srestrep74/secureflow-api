@@ -146,6 +146,72 @@ class BearerHttpIntegrationTest {
                 .isEqualTo(401);
     }
 
+    @Autowired
+    com.secureflow.identity.application.LogoutCurrentSessionUseCase logout;
+
+    @Test
+    void logoutRevokesOnlyTheOwnedFamilyAndIsIdempotent() throws Exception {
+        var name = "u" + UUID.randomUUID().toString().replace("-", "").substring(0, 18);
+        assertThat(request(
+                                "/api/v1/auth/register",
+                                "{\"username\":\"" + name + "\",\"email\":\"" + name
+                                        + "@example.com\",\"password\":\"correct horse battery\"}",
+                                null)
+                        .statusCode())
+                .isEqualTo(201);
+        var body = "{\"identifier\":\"" + name + "\",\"password\":\"correct horse battery\"}";
+        var first = request("/api/v1/auth/login", body, null);
+        var second = request("/api/v1/auth/login", body, null);
+        var access = value(first.body(), "access_token");
+        var otherAccess = value(second.body(), "access_token");
+        var refreshToken = value(first.body(), "refresh_token");
+        var otherRefresh = value(second.body(), "refresh_token");
+        var jwt = decoder.decode(access);
+        var user = UUID.fromString(jwt.getSubject());
+        var family = UUID.fromString(jwt.getClaimAsString("sid"));
+        var command = new com.secureflow.identity.application.LogoutCurrentSessionCommand(user, family);
+        var foreignUser = UUID.fromString(decoder.decode(login()).getSubject());
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> logout.logout(
+                        new com.secureflow.identity.application.LogoutCurrentSessionCommand(foreignUser, family)))
+                .isInstanceOf(com.secureflow.identity.application.InvalidLogoutContextException.class);
+        var before = jdbc.queryForMap("select expires_at, revoked_at from session_families where id = ?", family);
+        var version = jdbc.queryForObject("select security_version from users where id = ?", Long.class, user);
+        assertThat(request("/api/v1/me", null, access).statusCode()).isEqualTo(200);
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> logout.logout(
+                        new com.secureflow.identity.application.LogoutCurrentSessionCommand(UUID.randomUUID(), family)))
+                .isInstanceOf(com.secureflow.identity.application.InvalidLogoutContextException.class);
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> logout.logout(
+                        new com.secureflow.identity.application.LogoutCurrentSessionCommand(user, UUID.randomUUID())))
+                .isInstanceOf(com.secureflow.identity.application.InvalidLogoutContextException.class);
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> logout.logout(null))
+                .isInstanceOf(com.secureflow.identity.application.InvalidLogoutContextException.class);
+        logout.logout(command);
+        var revoked = jdbc.queryForMap(
+                "select expires_at, revoked_at, xmin::text as version from session_families where id = ?", family);
+        assertThat(revoked.get("revoked_at")).isNotNull();
+        assertThat(revoked.get("expires_at")).isEqualTo(before.get("expires_at"));
+        logout.logout(command);
+        assertThat(jdbc.queryForMap(
+                        "select expires_at, revoked_at, xmin::text as version from session_families where id = ?",
+                        family))
+                .isEqualTo(revoked);
+        assertThat(jdbc.queryForObject("select security_version from users where id = ?", Long.class, user))
+                .isEqualTo(version);
+        assertThat(jdbc.queryForObject("select status from users where id = ?", String.class, user))
+                .isEqualTo("ACTIVE");
+        assertThat(request("/api/v1/me", null, access).statusCode()).isEqualTo(401);
+        assertThat(request("/api/v1/me", null, otherAccess).statusCode()).isEqualTo(200);
+        org.assertj.core.api.Assertions.assertThatThrownBy(() ->
+                        refresh.refresh(new com.secureflow.identity.application.RefreshSessionCommand(refreshToken)))
+                .isInstanceOf(com.secureflow.identity.application.InvalidRefreshTokenException.class);
+        assertThat(jdbc.queryForObject(
+                        "select count(*) from refresh_tokens where family_id = ?", Integer.class, family))
+                .isEqualTo(1);
+        assertThat(refresh.refresh(new com.secureflow.identity.application.RefreshSessionCommand(otherRefresh))
+                        .accessToken())
+                .isNotBlank();
+    }
+
     @Test
     void deactivationAndCatalogMismatchFailClosed() throws Exception {
         var token = login();

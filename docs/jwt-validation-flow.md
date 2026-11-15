@@ -33,3 +33,7 @@ Phase 5.5A creates an RS256 access JWT from current roles, user security version
 ## Refresh HTTP interaction
 
 Refresh needs no access JWT. Resource Server processes any supplied Bearer header, so an expired token is rejected before the public refresh controller. Omit that header. The new RS256 JWT uses the same family and current server-side authorities; replay revocation causes subsequent family-bound JWT authentication to fail.
+
+## Current-session logout
+
+Phase 5.6A revokes the family in PostgreSQL. Subsequent Resource Server checks reject JWTs referencing that family, while other active families remain valid. A token held by a client is not erased and a request authenticated before commit may finish. No blacklist or cache is used. HTTP logout remains Phase 5.6B.

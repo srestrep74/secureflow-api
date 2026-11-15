@@ -39,3 +39,7 @@ PostgreSQL 17 integration tests exercise real signing and decoding, digest persi
 ## Refresh HTTP verification
 
 HTTP integration coverage uses PostgreSQL 17 Testcontainers and RS256 issuance to exercise rotation, persisted digests, replay revocation and resource-server rejection. A simulated persistence failure tests error translation and rollback; it is not a real PostgreSQL outage. Existing transaction, concurrency and architecture tests remain applicable.
+
+## Phase 5.6A verification
+
+PostgreSQL integration coverage exercises current-family logout, ownership, idempotence, session isolation, bearer and refresh rejection, immediate and deferred transaction failures, and both lock-contention orders. Existing security, refresh and architecture checks remain regression gates.
