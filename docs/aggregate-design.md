@@ -9,3 +9,7 @@ No aggregate is a JPA entity and no User object is held by Task. Task domain ver
 Phase 4.4 reuses `User.assignRole`: an effective change advances `securityVersion`, while the sole administrator retry does not call the repository update. The system-wide count is coordinated outside the aggregate by a PostgreSQL guard. Future administrative mutations still need to invoke the policy under that guard.
 
 A session family is an Identity technical consistency root with an immutable UUID, user ID, creation time and absolute expiry. Revocation is monotonic through a conditional database update. A refresh record retains its digest and consumption time independently of the User aggregate. The unconsumed-token partial unique index supports consume-then-insert rotation under a family lock.
+
+## Phase 5.5A rotation
+
+The family is the serialization boundary for refresh and replay, after the user lock. The old refresh record is consumed before a successor is inserted in the same transaction. Revocation is monotonic and does not erase consumed records. Family creation and absolute expiry are unchanged during rotation.

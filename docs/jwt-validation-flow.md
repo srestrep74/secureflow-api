@@ -25,3 +25,7 @@ The PostgreSQL adapter uses one parameterized statement with primary-key lookups
 ## Phase 5.4B HTTP bearer integration
 
 NimbusJwtDecoder enforces RS256, the trusted key ID, issuer, audience, lifetime, purpose and required claims. The converter maps the verified subject, session and versions to TrustedSecurityClaims and performs one PostgreSQL state projection before accepting roles and permissions. It creates JwtAuthenticationToken only after successful validation; no successful state is cached. Invalid claims or stale state result in 401; missing or incompatible catalog metadata and database failures result in 503.
+
+## Refresh and current access tokens
+
+Phase 5.5A creates an RS256 access JWT from current roles, user security version and compatible catalog version under the user lock. The existing online state check rejects the family after replay revocation commits. Requests already authorized before revocation may complete. The refresh use case does not require an access JWT; HTTP delivery remains Phase 5.5B.

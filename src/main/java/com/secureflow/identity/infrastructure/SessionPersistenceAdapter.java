@@ -84,6 +84,27 @@ class SessionPersistenceAdapter implements SessionRepositoryPort {
 
     @Override
     @Transactional
+    public void rotate(RefreshTokenRecord current, RefreshTokenRecord successor, Instant at) {
+        if (!current.familyId().equals(successor.familyId())
+                || successor.consumedAt() != null
+                || !successor.issuedAt().equals(at)) throw new IllegalArgumentException("Invalid rotation");
+        int changed = jdbc.update(
+                "update refresh_tokens set consumed_at = ? where id = ? and family_id = ? and consumed_at is null",
+                Timestamp.from(at),
+                current.id(),
+                current.familyId());
+        if (changed != 1) throw new IllegalStateException("Refresh token state changed");
+        jdbc.update(
+                "insert into refresh_tokens(id,family_id,token_digest,issued_at,expires_at) values (?,?,?,?,?)",
+                successor.id(),
+                successor.familyId(),
+                successor.digest(),
+                Timestamp.from(successor.issuedAt()),
+                Timestamp.from(successor.expiresAt()));
+    }
+
+    @Override
+    @Transactional
     public boolean revoke(UUID id, Instant at) {
         return jdbc.update(
                         "update session_families set revoked_at = ? where id = ? and revoked_at is null and created_at <= ?",

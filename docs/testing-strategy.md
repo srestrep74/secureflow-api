@@ -31,3 +31,7 @@ A coordinated two-transaction test checks the committed account and family proje
 ## Phase 5.4B HTTP bearer integration
 
 HTTP integration tests use real RS256 tokens, a running web server and PostgreSQL 17 Testcontainers. They cover current-state rejection, signed invalid claims, 401/403/503 distinctions, explicit authority mapping and concurrent principal isolation. The classified database failure test injects an exception; it does not simulate an outage of a running PostgreSQL server. The test-only protected controller and security chain exercise role and permission checks without publishing a production diagnostic route.
+
+## Phase 5.5A refresh verification
+
+PostgreSQL 17 integration tests exercise real signing and decoding, digest persistence, current role changes, expiration, replay revocation and bearer rejection. Coordinated transactions hold the first issuance while PostgreSQL reports the second waiting on the user lock; the second then detects replay. Database triggers inject consumption, insertion and deferred commit failures, including replay revocation commit; signing failure is injected through the application token port. These tests are not a production load measurement or a running database outage. Foreign keys prevent a family from referencing a deleted user in the normal schema; the defensive missing-user branch is not established by such a database state.

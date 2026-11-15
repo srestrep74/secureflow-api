@@ -55,3 +55,7 @@ User security version increments for effective role assignment/removal and accou
 ## Phase 5.4B HTTP bearer integration
 
 The Resource Server is enabled only with the existing JWT activation and valid external keys. It uses Spring Security Bearer extraction and a request-scoped context without HTTP sessions. PostgreSQL is required for each decoded Bearer attempt; no cached-success fallback exists. The READ COMMITTED projection cannot retroactively stop a request already in progress. Classified unavailability fails closed with 503.
+
+## Phase 5.5A rotation and replay
+
+Opaque 256-bit refresh credentials are persisted only as SHA-256 digests. The unique digest index supports bounded lookup; the partial unique index enforces one unconsumed token per family. User then family row locks serialize all compliant writers across application instances. This order also serializes separate families of one user; lock waits and throughput have not been measured. Consumed history is retained. No cache or process-local lock participates. Strict replay revokes a known unexpired family even for simultaneous legitimate retries or a lost response. Typed outcomes allow revocation to commit without an unchecked exception rolling it back; failures during consumption, insertion, signing or commit roll back and fail closed. A database outage was not separately exercised for refresh. Direct SQL writers that bypass the locking protocol remain unsupported.

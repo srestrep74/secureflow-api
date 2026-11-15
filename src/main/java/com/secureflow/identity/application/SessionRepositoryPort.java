@@ -11,5 +11,7 @@ public interface SessionRepositoryPort {
 
     Optional<RefreshTokenRecord> findTokenByDigest(String digest);
 
+    void rotate(RefreshTokenRecord current, RefreshTokenRecord successor, Instant consumedAt);
+
     boolean revoke(UUID familyId, Instant revokedAt);
 }

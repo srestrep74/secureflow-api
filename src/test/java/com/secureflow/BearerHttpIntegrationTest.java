@@ -120,6 +120,32 @@ class BearerHttpIntegrationTest {
         assertThat(request("/api/v1/me", null, token).statusCode()).isEqualTo(401);
     }
 
+    @Autowired
+    com.secureflow.identity.application.RefreshSessionUseCase refresh;
+
+    @Test
+    void replayRevocationInvalidatesPreviouslyIssuedAccessToken() throws Exception {
+        var name = "u" + UUID.randomUUID().toString().replace("-", "").substring(0, 18);
+        assertThat(request(
+                                "/api/v1/auth/register",
+                                "{\"username\":\"" + name + "\",\"email\":\"" + name
+                                        + "@example.com\",\"password\":\"correct horse battery\"}",
+                                null)
+                        .statusCode())
+                .isEqualTo(201);
+        var response = request(
+                "/api/v1/auth/login", "{\"identifier\":\"" + name + "\",\"password\":\"correct horse battery\"}", null);
+        var original = value(response.body(), "refresh_token");
+        var result = refresh.refresh(new com.secureflow.identity.application.RefreshSessionCommand(original));
+        assertThat(request("/api/v1/me", null, result.accessToken()).statusCode())
+                .isEqualTo(200);
+        org.assertj.core.api.Assertions.assertThatThrownBy(
+                        () -> refresh.refresh(new com.secureflow.identity.application.RefreshSessionCommand(original)))
+                .isInstanceOf(com.secureflow.identity.application.RefreshReplayException.class);
+        assertThat(request("/api/v1/me", null, result.accessToken()).statusCode())
+                .isEqualTo(401);
+    }
+
     @Test
     void deactivationAndCatalogMismatchFailClosed() throws Exception {
         var token = login();

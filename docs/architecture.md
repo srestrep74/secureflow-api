@@ -19,3 +19,7 @@ Phase 4.4 runs an explicit `bootstrap-admin` command in a non-web Spring context
 Phase 5.2 adds an Identity application session persistence port and a JDBC adapter, consistent with existing credential storage. A single transactional adapter operation inserts the family and initial digest; database foreign keys and uniqueness protect consistency. The session is a technical consistency root, not a separate bounded context. No HTTP endpoints or online JWT state checks are added.
 
 Phase 5.4A adds application-owned `SecurityStatePort`, immutable claims and snapshot records, and a framework-independent validator. A JDBC outbound adapter projects account status/version, session ownership/revocation/timestamps and the global catalog version in a single indexed PostgreSQL statement. It returns no entities or secrets. A single READ COMMITTED statement observes one snapshot; concurrent changes committed after its start are not guaranteed to affect that request. Database errors and missing or incompatible catalog metadata fail closed as a sanitized availability exception. Bearer authentication remains deferred to Phase 5.4B.
+
+## Phase 5.5A application refresh
+
+RefreshSessionUseCase depends on application-owned session, user, security-state, token and transaction ports. The PostgreSQL adapter performs indexed resolution and user-then-family row locks; Spring transaction infrastructure commits or rolls back before returning the outcome. Signing uses the existing access-token issuer. There is no refresh HTTP adapter in this phase.
