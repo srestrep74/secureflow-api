@@ -1,6 +1,8 @@
 # Implementation Plan
 
-**Status: Phase 4 authorized; Phase 4.1 credential storage and hashing implemented.**
+2026-11-15: Phase 4.2A implements the transactional registration use case; the HTTP adapter and its security configuration remain Phase 4.2B.
+
+**Status: Phase 4.2A registration application implemented; Phase 4.2B pending.**
 
 2026-11-15: Phase 3 and formatting approved. Phase 4.1 adds an Argon2id encoder, credential persistence port and PostgreSQL migration. Registration, authentication and operator bootstrap remain outstanding. JWT and refresh remain Phase 5.
 
