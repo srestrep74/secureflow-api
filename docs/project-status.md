@@ -1,6 +1,8 @@
 # Project Status
 
-**Status: Phase 3 implemented and verified; awaiting review before Phase 4.**
+**Status: Phase 4 authorized; Phase 4.1 credential storage and hashing implemented.**
+
+2026-11-15: Phase 3 and Spotless approved. Phase 4.1 adds Argon2id hashing and a credential table linked to existing users. `spotlessApply`, `spotlessCheck` and `clean check --no-daemon` passed; 27 tests ran, including three credential integration tests and eight architecture rules. PostgreSQL Testcontainers verified migration V3 and credential constraints. Registration, login and protected administrator bootstrap remain outstanding; JWT and refresh belong to Phase 5. Production hashing costs require deployment benchmarking.
 
 2026-11-15: Established the Java formatting baseline with Spotless 8.11.0 and Palantir Java Format 2.103.0. `spotlessApply`, `spotlessCheck`, and `clean check --no-daemon` passed; all 24 tests passed. A second apply preserved Java file hashes. A deliberately malformed file caused `check` to fail at `spotlessJavaCheck`; after restoration, `spotlessCheck` passed. Phase 4 remains unstarted.
 

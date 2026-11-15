@@ -1,6 +1,8 @@
 # Implementation Plan
 
-**Status: Phase 3 implemented and verified; awaiting review before Phase 4.**
+**Status: Phase 4 authorized; Phase 4.1 credential storage and hashing implemented.**
+
+2026-11-15: Phase 3 and formatting approved. Phase 4.1 adds an Argon2id encoder, credential persistence port and PostgreSQL migration. Registration, authentication and operator bootstrap remain outstanding. JWT and refresh remain Phase 5.
 
 Formatting quality gate (2026-11-15): Spotless 8.11.0 and Palantir Java Format 2.103.0 configured and applied to Java sources. Formatting checks, the clean Gradle check (24 tests), idempotence, and rejection of an intentional formatting violation were verified. See [code style](code-style.md). This does not authorize Phase 4.
 
