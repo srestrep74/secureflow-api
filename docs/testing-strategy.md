@@ -23,3 +23,7 @@ Login integration tests exercise real Spring Security authentication, PostgreSQL
 ## Phase 5.3B HTTP verification
 
 HTTP integration coverage uses PostgreSQL Testcontainers, the real credential provider, ephemeral RSA keys and the JWT decoder. It checks token claims and persisted session and digest, generic credential failures, input rejection, cache headers, stateless behavior and denial of protected routes. A dependency double does not demonstrate a real database outage; distinguish simulated failures from actual unavailability in test reports.
+
+Phase 5.4A adds PostgreSQL 17 Testcontainers coverage for state projections, missing or foreign accounts and sessions, role/status changes, expiration and idempotent revocation, catalog initialization and incompatibility, and schema indexes. A separate connection to an unavailable local PostgreSQL port tests sanitized failure classification; this is a broken-connection test, not a running server outage. Existing HTTP, JWT, persistence and architecture suites remain regression gates. No latency benchmark or representative query plan is claimed.
+
+A coordinated two-transaction test checks the committed account and family projection before and after a combined change. The final Gradle check executed 115 tests with no failures or skips, including five security-state integration tests and 11 architecture rules.

@@ -45,3 +45,9 @@ Credential verification precedes a new transaction that locks and reloads the us
 ## HTTP login operational requirements
 
 JWT login is opt-in and requires external valid RSA key configuration; there is no fallback key. TLS must be enforced at the deployment boundary. Avoid recording request or response bodies, credentials and tokens in access logs or traces. Rate limiting and other login-abuse controls remain required before production deployment. OpenAPI must be explicitly enabled and restricted in production. Token responses use no-store and no-cache headers; no authentication cookie or HTTP session is created.
+
+## Security state and catalog deployment (5.4A)
+
+Flyway V6 creates a positive, unique singleton authorization catalog version initialized to 1. The database value represents the compiled `JwtAuthorityCatalog` definition; deployments must change the mapping and version together through a controlled migration. A missing row or a version incompatible with the running binary fails closed and logs a generic operational error. Existing tokens with a different catalog version are rejected. Old binaries cannot validate against a new version; coordinate rollout and expect temporary unavailability for mixed versions. Restrict database update privileges operationally; no administrative HTTP endpoint is provided.
+
+User security version increments for effective role assignment/removal and account status changes, invalidating old authorization snapshots. The JPA lock version detects concurrent persistence writes and is distinct from that security version; the global catalog version identifies the compiled mapping and is independent of users. Direct SQL mutations bypass aggregate semantics and must not be used for user security changes. Session family revocation invalidates that family only; expiry is checked independently of refresh token consumption.
