@@ -222,3 +222,58 @@ Before starting a new phase, review:
 Use Git history and project documentation together to recover the current development state.
 
 A task or phase is only considered fully delivered when its implementation, required verification, documentation updates, and corresponding commit have been completed successfully.
+
+## Code Formatting and Style Enforcement
+
+SecureFlow API enforces consistent source-code formatting using Spotless and Palantir Java Format.
+
+Formatting is a mandatory engineering quality gate for every implementation task and development phase.
+Documentation-only changes require checks appropriate to their content; unrelated application integration tests are not required unless build or executable behavior changes.
+
+### Formatting standards
+
+- Use Spotless as the primary formatting and verification tool.
+- Use Palantir Java Format for all Java source files.
+- Follow the formatter's standard indentation, line wrapping, spacing, and layout conventions.
+- Remove unused Java imports through the configured formatter.
+- Keep source files free of trailing whitespace.
+- Require a final newline.
+- Apply the same formatting rules to production and test code.
+- Do not introduce additional conflicting Java formatters.
+- Do not disable formatting checks to make a build pass.
+- Do not introduce formatter suppression directives without explicit approval.
+- Formatting must not alter application behavior.
+- Formatting does not replace SOLID, Clean Code, security reviews, or static analysis.
+
+### Mandatory workflow before every commit
+
+After completing an implementation task or phase, execute these steps in order:
+
+1. Review the implementation and the relevant Git diff.
+2. Execute `.\gradlew.bat spotlessApply`.
+3. Execute `.\gradlew.bat spotlessCheck`.
+4. Execute `.\gradlew.bat clean check --no-daemon`.
+5. Investigate and resolve any formatting, compilation, or test failures.
+6. Review the resulting diff to ensure the formatter introduced no unintended changes.
+7. Update the relevant documentation.
+8. Stage only files belonging to the completed work.
+9. Create an English Conventional Commit.
+10. Report the verification results and commit hash.
+
+Never commit implementation changes as completed work if `spotlessCheck` or the required verification tasks fail.
+
+### Existing code and formatting changes
+
+- Format existing repository Java code when initially introducing Spotless.
+- Keep the initial formatting baseline separate from unrelated functional changes.
+- Avoid unnecessary repository-wide formatting during later feature work.
+- Do not manually undo formatting produced by the approved formatter.
+- If formatting introduces a compilation issue, investigate the root cause rather than disabling the formatter.
+
+### Future Codex sessions
+
+These rules apply permanently to every future Codex session.
+
+Before committing any implementation task or marking a phase complete, Codex must run the formatting and verification workflow.
+
+A task or phase is not fully delivered until formatting, tests, documentation, and Conventional Commit requirements have been satisfied.

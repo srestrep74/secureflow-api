@@ -1,6 +1,7 @@
 plugins {
     java
     id("org.springframework.boot") version "4.0.9"
+    id("com.diffplug.spotless") version "8.11.0"
 }
 
 group = "com.secureflow"
@@ -14,6 +15,15 @@ java {
 
 repositories {
     mavenCentral()
+}
+
+spotless {
+    java {
+        removeUnusedImports()
+        palantirJavaFormat("2.103.0")
+        trimTrailingWhitespace()
+        endWithNewline()
+    }
 }
 
 dependencies {
