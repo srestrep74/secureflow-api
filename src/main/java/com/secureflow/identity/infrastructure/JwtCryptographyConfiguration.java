@@ -12,6 +12,7 @@ import java.security.interfaces.RSAPrivateCrtKey;
 import java.security.interfaces.RSAPublicKey;
 import java.security.spec.PKCS8EncodedKeySpec;
 import java.security.spec.X509EncodedKeySpec;
+import java.time.Clock;
 import java.util.Base64;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
@@ -21,16 +22,20 @@ import org.springframework.security.oauth2.core.DelegatingOAuth2TokenValidator;
 import org.springframework.security.oauth2.core.OAuth2Error;
 import org.springframework.security.oauth2.core.OAuth2TokenValidatorResult;
 import org.springframework.security.oauth2.jose.jws.SignatureAlgorithm;
+import org.springframework.security.oauth2.jwt.BadJwtException;
 import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.oauth2.jwt.JwtAudienceValidator;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.jwt.JwtEncoder;
-import org.springframework.security.oauth2.jwt.JwtValidators;
+import org.springframework.security.oauth2.jwt.JwtIssuerValidator;
+import org.springframework.security.oauth2.jwt.JwtTimestampValidator;
+import org.springframework.security.oauth2.jwt.MappedJwtClaimSetConverter;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.security.oauth2.jwt.NimbusJwtEncoder;
 
 @Configuration(proxyBeanMethods = false)
 @ConditionalOnProperty(prefix = "secureflow.jwt", name = "enabled", havingValue = "true")
-@EnableConfigurationProperties(JwtKeyProperties.class)
+@EnableConfigurationProperties({JwtKeyProperties.class, JwtClaimsProperties.class})
 class JwtCryptographyConfiguration {
     @Bean
     RsaSigningKeys keys(JwtKeyProperties properties) {
@@ -81,16 +86,53 @@ class JwtCryptographyConfiguration {
     }
 
     @Bean
-    JwtDecoder decoder(RsaSigningKeys keys) {
+    JwtDecoder decoder(RsaSigningKeys keys, JwtClaimsProperties properties) {
+        return decoder(keys, properties, Clock.systemUTC());
+    }
+
+    JwtDecoder decoder(RsaSigningKeys keys, JwtClaimsProperties properties, Clock clock) {
         var decoder = NimbusJwtDecoder.withPublicKey(keys.publicKey())
                 .signatureAlgorithm(SignatureAlgorithm.RS256)
                 .build();
+        var converter = MappedJwtClaimSetConverter.withDefaults(java.util.Map.of());
+        decoder.setClaimSetConverter(claims -> {
+            for (var name : java.util.List.of("iss", "sub", "jti")) {
+                if (claims.containsKey(name) && !(claims.get(name) instanceof String)) {
+                    throw new BadJwtException("Invalid claim type");
+                }
+            }
+            for (var name : java.util.List.of("iat", "nbf", "exp")) {
+                if (claims.containsKey(name) && !(claims.get(name) instanceof java.util.Date)) {
+                    throw new BadJwtException("Invalid timestamp type");
+                }
+            }
+            var audience = claims.get("aud");
+            if (audience != null
+                    && (!(audience instanceof java.util.Collection<?> values)
+                            || values.isEmpty()
+                            || values.stream().anyMatch(value -> !(value instanceof String s) || s.isBlank()))) {
+                throw new BadJwtException("Invalid audience type");
+            }
+            return converter.convert(claims);
+        });
+        var timestamps = new JwtTimestampValidator(AccessTokenValidator.SKEW);
+        timestamps.setClock(clock);
+        timestamps.setAllowEmptyExpiryClaim(false);
+        timestamps.setAllowEmptyNotBeforeClaim(false);
         decoder.setJwtValidator(new DelegatingOAuth2TokenValidator<>(
-                JwtValidators.createDefault(),
+                timestamps,
+                new JwtIssuerValidator(properties.issuer()),
+                new JwtAudienceValidator(properties.audience()),
+                new AccessTokenValidator(clock),
                 (Jwt jwt) -> keys.keyId().equals(jwt.getHeaders().get("kid"))
                         ? OAuth2TokenValidatorResult.success()
                         : OAuth2TokenValidatorResult.failure(new OAuth2Error("invalid_token"))));
         return decoder;
+    }
+
+    @Bean
+    AccessTokenIssuer accessTokenIssuer(JwtEncoder encoder, JwtClaimsProperties properties, RsaSigningKeys keys) {
+        return new AccessTokenIssuer(encoder, properties, keys.keyId(), Clock.systemUTC());
     }
 
     record RsaSigningKeys(RSAPrivateCrtKey privateKey, RSAPublicKey publicKey, String keyId) {

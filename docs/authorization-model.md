@@ -1,4 +1,4 @@
-﻿# Authorization
+# Authorization
 
 **Status: Phase 0 approved on 2026-11-15; later implementation remains phase-gated.**
 
@@ -13,3 +13,5 @@ See the [consolidated Phase 0 design](phase-0-design.md) for the complete contra
 ADR-0005 is implemented by a one-shot operator command. It accepts an existing active registered user with a persisted Argon2id credential. While holding the shared database guard, it promotes only when there is no active ADMIN; the sole active ADMIN is an idempotent success. A different active ADMIN causes rejection. USER remains assigned and an effective ADMIN assignment increments the security version once.
 
 The `ActiveAdministratorPolicy` and the shared guard provide the coordination needed by future user administration. Every operation that can change the active ADMIN count must lock the guard first, before loading the target or counting administrators, and hold it through commit: ADMIN assignment or removal, activation or deactivation of an ADMIN, deletion of an ADMIN, and any equivalent bulk or recovery operation. Before removing or deactivating an active ADMIN, check that another active ADMIN exists. No such management use case exists yet: the last-administrator invariant is not enforced against direct SQL or future code that bypasses this protocol. Restrict database writes accordingly.
+
+Phase 5.1B encodes roles as `ROLE_` names and permissions as a separate JSON string array. The single local catalog derives the exact permission union and validates it against the signed role snapshot. Catalog version 1 is the only version this binary understands. The durable catalog, transactional snapshot and authoritative version checks remain future work; signed claims alone are insufficient for authorization.

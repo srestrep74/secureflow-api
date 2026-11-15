@@ -2,16 +2,11 @@ package com.secureflow.identity.infrastructure;
 
 import static org.assertj.core.api.Assertions.*;
 
-import com.nimbusds.jose.jwk.JWKSet;
-import com.nimbusds.jose.jwk.RSAKey;
-import com.nimbusds.jose.jwk.source.ImmutableJWKSet;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 import java.security.interfaces.RSAPrivateKey;
-import java.security.interfaces.RSAPublicKey;
-import java.time.Instant;
 import java.util.Base64;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -39,50 +34,51 @@ class JwtCryptographyConfigurationTest {
     @Test
     void signsAndVerifiesWithConfiguredKeys() {
         var keys = configuration.keys(properties());
-        var token = configuration
-                .encoder(keys, properties())
-                .encode(JwtEncoderParameters.from(
-                        JwsHeader.with(SignatureAlgorithm.RS256)
-                                .keyId("test-key")
-                                .build(),
-                        JwtClaimsSet.builder()
-                                .subject("synthetic")
-                                .expiresAt(Instant.now().plusSeconds(60))
-                                .build()));
-        var decoded = configuration.decoder(keys).decode(token.getTokenValue());
-        assertThat(decoded.getSubject()).isEqualTo("synthetic");
+        var user = java.util.UUID.randomUUID();
+        var issuer = new AccessTokenIssuer(
+                configuration.encoder(keys, properties()), claimsProperties(), "test-key", java.time.Clock.systemUTC());
+        var token = issuer.issue(new AccessTokenClaims(
+                user, java.util.UUID.randomUUID(), 0, 1, java.util.Set.of(com.secureflow.identity.domain.Role.USER)));
+        var decoded = configuration.decoder(keys, claimsProperties()).decode(token);
+        assertThat(decoded.getSubject()).isEqualTo(user.toString());
         assertThat(decoded.getHeaders()).containsEntry("alg", "RS256").containsEntry("kid", "test-key");
     }
 
     @Test
     void rejectsDifferentKeyAndModifiedToken() throws Exception {
         var keys = configuration.keys(properties());
-        var token = configuration
-                .encoder(keys, properties())
-                .encode(JwtEncoderParameters.from(
-                        JwsHeader.with(SignatureAlgorithm.RS256)
-                                .keyId("test-key")
-                                .build(),
-                        JwtClaimsSet.builder()
-                                .subject("synthetic")
-                                .expiresAt(Instant.now().plusSeconds(60))
-                                .build()))
-                .getTokenValue();
+        var token = new AccessTokenIssuer(
+                        configuration.encoder(keys, properties()),
+                        claimsProperties(),
+                        "test-key",
+                        java.time.Clock.systemUTC())
+                .issue(new AccessTokenClaims(
+                        java.util.UUID.randomUUID(),
+                        java.util.UUID.randomUUID(),
+                        0,
+                        1,
+                        java.util.Set.of(com.secureflow.identity.domain.Role.USER)));
+        assertThat(configuration.decoder(keys, claimsProperties()).decode(token))
+                .isNotNull();
         var other = generate(2048);
         var otherPrivate =
                 write("other-private.pem", "PRIVATE KEY", other.getPrivate().getEncoded());
         var otherPublic =
                 write("other-public.pem", "PUBLIC KEY", other.getPublic().getEncoded());
         var otherKeys = configuration.keys(new JwtKeyProperties(otherPrivate, otherPublic, "test-key"));
-        assertThatThrownBy(() -> configuration.decoder(otherKeys).decode(token)).isInstanceOf(JwtException.class);
+        assertThatThrownBy(() ->
+                        configuration.decoder(otherKeys, claimsProperties()).decode(token))
+                .isInstanceOf(JwtException.class);
         var parts = token.split("\\.");
         var payload = Base64.getUrlEncoder().withoutPadding().encodeToString("{\"sub\":\"tampered\"}".getBytes());
-        assertThatThrownBy(() -> configuration.decoder(keys).decode(parts[0] + "." + payload + "." + parts[2]))
+        assertThatThrownBy(() -> configuration
+                        .decoder(keys, claimsProperties())
+                        .decode(parts[0] + "." + payload + "." + parts[2]))
                 .isInstanceOf(JwtException.class);
     }
 
     @Test
-    void rejectsUnsupportedAlgorithm() {
+    void rejectsUnsupportedAlgorithm() throws Exception {
         var keys = configuration.keys(properties());
         assertThatThrownBy(() -> configuration
                         .encoder(keys, properties())
@@ -90,17 +86,28 @@ class JwtCryptographyConfigurationTest {
                                 JwsHeader.with(SignatureAlgorithm.RS384).build(),
                                 JwtClaimsSet.builder().subject("synthetic").build())))
                 .isInstanceOf(JwtException.class);
-        var jwk = new RSAKey.Builder((RSAPublicKey) keyPair.getPublic())
-                .privateKey((RSAPrivateKey) keyPair.getPrivate())
-                .build();
-        var encoder = new NimbusJwtEncoder(new ImmutableJWKSet<>(new JWKSet(jwk)));
-        var token = encoder.encode(JwtEncoderParameters.from(
-                JwsHeader.with(SignatureAlgorithm.RS384).build(),
-                JwtClaimsSet.builder()
-                        .subject("synthetic")
-                        .expiresAt(Instant.now().plusSeconds(60))
-                        .build()));
-        assertThatThrownBy(() -> configuration.decoder(keys).decode(token.getTokenValue()))
+        var valid = new AccessTokenIssuer(
+                        configuration.encoder(keys, properties()),
+                        claimsProperties(),
+                        "test-key",
+                        java.time.Clock.systemUTC())
+                .issue(new AccessTokenClaims(
+                        java.util.UUID.randomUUID(),
+                        java.util.UUID.randomUUID(),
+                        0,
+                        1,
+                        java.util.Set.of(com.secureflow.identity.domain.Role.USER)));
+        assertThat(configuration.decoder(keys, claimsProperties()).decode(valid))
+                .isNotNull();
+        var payload = com.nimbusds.jose.JWSObject.parse(valid).getPayload();
+        var token = new com.nimbusds.jose.JWSObject(
+                new com.nimbusds.jose.JWSHeader.Builder(com.nimbusds.jose.JWSAlgorithm.RS384)
+                        .keyID("test-key")
+                        .type(com.nimbusds.jose.JOSEObjectType.JWT)
+                        .build(),
+                payload);
+        token.sign(new com.nimbusds.jose.crypto.RSASSASigner((RSAPrivateKey) keyPair.getPrivate()));
+        assertThatThrownBy(() -> configuration.decoder(keys, claimsProperties()).decode(token.serialize()))
                 .isInstanceOf(JwtException.class);
     }
 
@@ -148,11 +155,17 @@ class JwtCryptographyConfigurationTest {
                         "secureflow.jwt.enabled=true",
                         "secureflow.jwt.private-key=" + privateKey,
                         "secureflow.jwt.public-key=" + publicKey,
-                        "secureflow.jwt.key-id=test-key")
+                        "secureflow.jwt.key-id=test-key",
+                        "secureflow.jwt.issuer=https://issuer.example",
+                        "secureflow.jwt.audience=secureflow")
                 .run(context -> {
                     assertThat(context).hasSingleBean(JwtEncoder.class);
                     assertThat(context).hasSingleBean(JwtDecoder.class);
                 });
+    }
+
+    JwtClaimsProperties claimsProperties() {
+        return new JwtClaimsProperties("https://issuer.example", "secureflow");
     }
 
     JwtKeyProperties properties() {

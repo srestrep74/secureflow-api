@@ -1,4 +1,4 @@
-ï»¿# Security Decisions
+Ã¯Â»Â¿# Security Decisions
 
 **Status: Phase 0 approved on 2026-11-15; later implementation remains phase-gated.**
 
@@ -23,7 +23,7 @@ A missing or inactive account, missing or invalid credential, an existing differ
 
 ## Phase 5.1A RSA key configuration
 
-JWT cryptographic beans are disabled unless `SECUREFLOW_JWT_ENABLED=true` is explicitly set. This preserves registration-only and operator contexts; every deployment that uses JWTs must explicitly enable them. An invalid boolean, missing keys or key identifier, invalid PEM, nonmatching keys, or RSA modulus shorter than 2048 bits fails startup. There are no fallback keys and no automatic key generation. Configure filesystem paths with `SECUREFLOW_JWT_PRIVATEKEY` and `SECUREFLOW_JWT_PUBLICKEY`, and a stable identifier with `SECUREFLOW_JWT_KEYID` (1–128 ASCII letters, digits, `.`, `_` or `-`). Restrict the unencrypted private key file to the application identity; supply it via the deployment secret mechanism and never commit it. The private key must be unencrypted PKCS#8 PEM (`PRIVATE KEY`); the public key must be X.509 SubjectPublicKeyInfo PEM (`PUBLIC KEY`). The `kid` identifies the single currently trusted pair; overlapping rotation is not implemented.
+JWT cryptographic beans are disabled unless `SECUREFLOW_JWT_ENABLED=true` is explicitly set. This preserves registration-only and operator contexts; every deployment that uses JWTs must explicitly enable them. An invalid boolean, missing keys or key identifier, invalid PEM, nonmatching keys, or RSA modulus shorter than 2048 bits fails startup. There are no fallback keys and no automatic key generation. Configure filesystem paths with `SECUREFLOW_JWT_PRIVATEKEY` and `SECUREFLOW_JWT_PUBLICKEY`, and a stable identifier with `SECUREFLOW_JWT_KEYID` (1â€“128 ASCII letters, digits, `.`, `_` or `-`). Restrict the unencrypted private key file to the application identity; supply it via the deployment secret mechanism and never commit it. The private key must be unencrypted PKCS#8 PEM (`PRIVATE KEY`); the public key must be X.509 SubjectPublicKeyInfo PEM (`PUBLIC KEY`). The `kid` identifies the single currently trusted pair; overlapping rotation is not implemented.
 
 For local development, create the files outside the repository in a directory accessible only to the developer, using OpenSSL:
 
@@ -32,4 +32,6 @@ openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:3072 -out private.pem
 openssl pkey -in private.pem -pubout -out public.pem
 ```
 
-Set the three key properties to the resulting absolute paths and an identifier, and set the enabled property to `true`; restrict file permissions using the operating system. Development keys must not be used in production. Production must provision a persistent key pair securely and coordinate key replacement; replacing it immediately invalidates tokens signed with the previous key. Neither issuance from login nor the complete claims and online-state validation exists yet.
+Set the three key properties to the resulting absolute paths and an identifier, and set the enabled property to `true`; restrict file permissions using the operating system. Development keys must not be used in production. Production must provision a persistent key pair securely and coordinate key replacement; replacing it immediately invalidates tokens signed with the previous key. Issuance from login and online-state validation remain unimplemented.
+
+Phase 5.1B additionally requires `secureflow.jwt.issuer` and `secureflow.jwt.audience` when enabled. Set them to deployment-controlled trusted values shared by issuer and verifier. Tokens use a five-minute lifetime and the approved maximum 30-second clock tolerance; synchronization of host clocks remains an operational requirement. Structural validation is implemented, but the PostgreSQL authority freshness and revocation checks are not. No token issuance is exposed over HTTP.
