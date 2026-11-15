@@ -1,8 +1,8 @@
-﻿# Authentication Flow
+# Authentication Flow
 
 **Status: Phase 0 approved on 2026-11-15; later implementation remains phase-gated.**
 
-Phase 4.2B exposes anonymous registration using the existing transactional use case. The servlet security chain permits POST registration and GET health, and explicitly enabled OpenAPI JSON; other requests are denied. The HTTP adapter validates the request and maps it to the application command. The application validates independently, hashes with Argon2id and atomically persists the user, USER role and credential. Login remains future work.
+Phase 4.2B exposes anonymous registration using the existing transactional use case. The servlet security chain permits POST registration and GET health, and explicitly enabled OpenAPI JSON; other requests are denied. The HTTP adapter validates the request and maps it to the application command. The application validates independently, hashes with Argon2id and atomically persists the user, USER role and credential. A login HTTP endpoint remains future work.
 
 `CredentialRepositoryPort` stores and retrieves a PHC-formatted hash by user ID. Migration V3 enforces one credential per existing user. `PasswordEncoder` uses Spring Security Argon2id with a random 16-byte salt, 32-byte hash, 19,456 KiB memory, two iterations and parallelism one; Bouncy Castle provides the implementation. These parameters require deployment benchmarking.
 
@@ -11,3 +11,7 @@ JSON controller invokes an application use case through a credential authenticat
 Issuance reads current roles and security/catalog versions consistently while holding the user lock; a signed snapshot cannot combine stale grants with a new version. Refresh rotation atomically consumes one digest and creates one successor under a family lock. The separate strict replay rule revokes the family on reuse, including legitimate simultaneous retries. Redis cannot distinguish theft from such a retry.
 
 See the [consolidated Phase 0 design](phase-0-design.md) for the complete contract, trade-offs and approval gate.
+
+Phase 4.3 authenticates username or email programmatically. The identifier is trimmed and canonicalized by the existing domain values; `@` distinguishes email from username, whose grammar excludes it. `AuthenticateCredentialsUseCase` passes bounded, unmodified passwords through `CredentialAuthenticationPort`. The infrastructure adapter delegates to the explicitly configured `ProviderManager`, containing only `DaoAuthenticationProvider`. The provider loads the current user, roles and password hash through `UserDetailsService`, checks account status and calls the existing Argon2id `PasswordEncoder.matches`. Its successful principal carries the user ID and `ROLE_` authorities; the adapter returns only ID and username. ProviderManager erases credentials from the successful authentication. No security context or HTTP session is established.
+
+Unknown users, malformed identifiers, wrong passwords and inactive accounts produce the same application error. A missing credential record or infrastructure failure produces a separate unavailable error; future HTTP handling must map these categories to 401 and 503 respectively. No login HTTP endpoint or tokens exist yet. Authentication alone is not an issuance authorization: Phase 5 must lock and recheck current status, roles and versions before issuing tokens, as approved in ADR-0004.

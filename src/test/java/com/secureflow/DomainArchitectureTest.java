@@ -80,6 +80,21 @@ class DomainArchitectureTest {
             .implement(com.secureflow.task.application.TaskRepositoryPort.class);
 
     @ArchTest
+    static final ArchRule springSecurityStaysInInfrastructure = noClasses()
+            .that()
+            .resideOutsideOfPackage("..infrastructure..")
+            .should()
+            .dependOnClassesThat()
+            .resideInAPackage("org.springframework.security..");
+
+    @ArchTest
+    static final ArchRule authenticationAdapterImplementsPort = classes()
+            .that()
+            .haveSimpleName("SpringCredentialAuthenticationAdapter")
+            .should()
+            .implement(com.secureflow.identity.application.CredentialAuthenticationPort.class);
+
+    @ArchTest
     static final ArchRule packagesAreAcyclic =
             slices().matching("com.secureflow.(*)..").should().beFreeOfCycles();
 }

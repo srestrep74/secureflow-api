@@ -1,10 +1,12 @@
 # Implementation Plan
 
+2026-11-15: Phase 4.3 adds programmatic credential authentication through the application port, explicit ProviderManager and DaoAuthenticationProvider, current user/credential lookup and Argon2id verification. Spotless and `clean check --no-daemon` passed with 40 tests. HTTP login, token issuance and protected administrator bootstrap remain subsequent work.
+
 2026-11-15: Phase 4.2B registration HTTP adapter, security chain, request validation, error responses, OpenAPI and PostgreSQL HTTP integration tests implemented and verified with `spotlessApply`, `spotlessCheck` and `clean check --no-daemon` (34 tests). Phase 4.3 credential authentication remains pending.
 
 2026-11-15: Phase 4.2A implements the transactional registration use case; the HTTP adapter and its security configuration remain Phase 4.2B.
 
-**Status: Phase 4.2B registration HTTP adapter implemented and verified; Phase 4.3 pending.**
+**Status: Phase 4.3 credential authentication implemented and verified; Phase 4.4 remains gated.**
 
 2026-11-15: Phase 3 and formatting approved. Phase 4.1 adds an Argon2id encoder, credential persistence port and PostgreSQL migration. Registration, authentication and operator bootstrap remain outstanding. JWT and refresh remain Phase 5.
 

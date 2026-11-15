@@ -1,10 +1,12 @@
 # Project Status
 
+2026-11-15: Phase 4.3 programmatic credential authentication implemented. `spotlessApply`, `spotlessCheck` and `clean check --no-daemon` passed; 40 tests ran, including three PostgreSQL authentication integration tests, one provider failure/delegation test and 11 architecture rules. The database outage was simulated at the repository boundary, not exercised against an unavailable PostgreSQL server. HTTP login and token issuance remain unimplemented; Phase 4.4 requires separate authorization.
+
 2026-11-15: Phase 4.2B registration HTTP adapter implemented. `spotlessApply`, `spotlessCheck` and `clean check --no-daemon` passed; 34 tests ran, including three HTTP registration tests, three existing registration transaction tests, nine architecture rules and explicitly enabled OpenAPI/Swagger checks. PostgreSQL Testcontainers verified persistence, conflicts and rollback. An actual database outage and production deployment remain unverified. Duplicate responses disclose account existence and require abuse controls. Phase 4.3 credential authentication is pending.
 
 2026-11-15: Phase 4.2A registration application work implemented. Spotless and `clean check --no-daemon` passed: 30 tests, including three PostgreSQL registration tests and eight architecture checks. A credential constraint failure rolled back user and role creation; registration then succeeded with the same identity. HTTP registration remains Phase 4.2B; login remains outside this scope.
 
-**Status: Phase 4.2B registration HTTP adapter implemented and verified; Phase 4.3 pending.**
+**Status: Phase 4.3 credential authentication implemented and verified; Phase 4.4 remains gated.**
 
 2026-11-15: Phase 3 and Spotless approved. Phase 4.1 adds Argon2id hashing and a credential table linked to existing users. `spotlessApply`, `spotlessCheck` and `clean check --no-daemon` passed; 27 tests ran, including three credential integration tests and eight architecture rules. PostgreSQL Testcontainers verified migration V3 and credential constraints. Registration, login and protected administrator bootstrap remain outstanding; JWT and refresh belong to Phase 5. Production hashing costs require deployment benchmarking.
 
