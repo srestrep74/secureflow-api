@@ -291,3 +291,13 @@ When a task is explicitly authorized for implementation:
 - Report a task as completed only when its acceptance criteria have been verified.
 - If an environmental or permission restriction prevents implementation, identify the exact restriction.
 - Never bypass tool permissions, security controls, or explicit user restrictions.
+
+## Optional Development Workflows
+
+External development methodologies and skills, including BMAD or Superpowers, are optional unless explicitly required by the user for the current task.
+
+- Use an external workflow only when its required scripts and dependencies are available.
+- If an optional workflow is missing or broken, report the limitation briefly and continue using the repository's established engineering standards.
+- Do not abandon an explicitly authorized implementation task merely because an optional workflow cannot be initialized.
+- `AGENTS.md`, Accepted ADRs, approved architecture, automated verification, and Conventional Commits remain mandatory.
+- Never bypass actual repository permissions or mandatory security controls.
