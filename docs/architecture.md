@@ -13,3 +13,5 @@ The current model uses `identity.domain`, `task.domain`, and a minimal `shared.d
 See the [consolidated Phase 0 design](phase-0-design.md) for the complete contract, trade-offs and approval gate.
 
 Phase 4.3 adds an application-owned credential authentication port and identity result. Spring Security types, the principal, authority conversion and the provider manager remain in Identity infrastructure; application and domain do not depend on the framework. Current roles are read for credential authentication, while token issuance consistency remains a later-phase responsibility.
+
+Phase 4.4 runs an explicit `bootstrap-admin` command in a non-web Spring context. The application service defines the transaction; a PostgreSQL adapter locks the durable singleton guard row before reading the user and administrator count. The user aggregate assigns ADMIN and the existing repository persists it using optimistic locking. The guard is operational coordination, not a domain aggregate. Future operations changing active administrator count must follow the same lock order and transaction protocol (ADR-0005).

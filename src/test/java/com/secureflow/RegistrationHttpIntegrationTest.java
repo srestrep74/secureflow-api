@@ -90,7 +90,7 @@ class RegistrationHttpIntegrationTest {
                 "{\"username\":\"valid\",\"email\":\"bad\",\"password\":\"a valid test password\"}",
                 "{\"username\":\"valid\",\"email\":\"a@example.test\",\"password\":\"short\"}",
                 "{\"username\":\"valid\",\"email\":\"a@example.test\",\"password\":\"" + "a".repeat(129) + "\"}",
-                "{\"username\":\"valid\",\"email\":\"a@example.test\",\"password\":\"" + "😀".repeat(129) + "\"}",
+                "{\"username\":\"valid\",\"email\":\"a@example.test\",\"password\":\"" + "ðŸ˜€".repeat(129) + "\"}",
                 "{\"username\":\"valid\",\"email\":\"a@example.test\",\"password\":\"" + "a".repeat(5000) + "\"}",
                 "{\"username\":\"valid\",\"email\":\"a@example.test\",\"password\":\"a valid test password\",\"role\":\"ADMIN\"}",
                 "{"
@@ -124,6 +124,21 @@ class RegistrationHttpIntegrationTest {
                     .isZero();
         } finally {
             jdbc.execute("alter table user_credentials drop constraint test_http_reject_credentials");
+        }
+    }
+
+    @Test
+    void bootstrapIsNotPubliclyAccessible() throws Exception {
+        try (var client = HttpClient.newHttpClient()) {
+            var request = HttpRequest.newBuilder(URI.create("http://localhost:" + port + "/api/v1/admin/bootstrap"))
+                    .header("Content-Type", "application/json")
+                    .POST(HttpRequest.BodyPublishers.ofString("{\"userId\":\"00000000-0000-0000-0000-000000000001\"}"))
+                    .build();
+            assertThat(client.send(request, HttpResponse.BodyHandlers.ofString())
+                            .statusCode())
+                    .isIn(401, 403, 404);
+            assertThat(jdbc.queryForObject("select count(*) from user_roles where role = 'ADMIN'", Integer.class))
+                    .isZero();
         }
     }
 
