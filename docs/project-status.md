@@ -1,8 +1,10 @@
 # Project Status
 
-**Status: Phase 2 implemented and verified; Phase 3 requires approval.**
+**Status: Phase 2 approved; Phase 3 authorized, not yet implemented.**
 
-2026-11-15: Implemented independent User and Task domain aggregates, value objects, local invariants and ArchUnit boundaries. `gradlew.bat clean check --no-daemon` executed successfully, followed by `gradlew.bat check --no-daemon` after validation changes: 11 tests passed, including three architecture rules and two PostgreSQL Testcontainers integration tests. The last check was up-to-date. Persistence reconstitution, uniqueness, transactional concurrency, authorization and credential management remain future work. No Phase 3 implementation is authorized.
+2026-11-15: The user approved Phase 2 and authorized Phase 3 persistence work. The Phase 2 domain version counts effective in-memory task mutations; persistence must preserve this contract while detecting concurrent writes. Phase 3 implementation and verification remain outstanding.
+
+2026-11-15: Implemented independent User and Task domain aggregates, value objects, local invariants and ArchUnit boundaries. `gradlew.bat clean check --no-daemon` executed successfully, followed by `gradlew.bat check --no-daemon` after validation changes: 11 tests passed, including three architecture rules and two PostgreSQL Testcontainers integration tests. The last check was up-to-date. Persistence reconstitution, uniqueness, transactional concurrency, authorization and credential management remained future work at that point.
 
 2026-11-15: The user approved Phase 1 and authorized Phase 2. The Compose smoke test started PostgreSQL 17 and its health check reached `healthy`; the isolated test container, network and volume were removed afterward. This verifies Compose startup, not production configuration.
 

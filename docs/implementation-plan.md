@@ -1,8 +1,10 @@
 # Implementation Plan
 
-**Status: Phase 2 implemented and verified; Phase 3 awaits approval.**
+**Status: Phase 2 approved; Phase 3 authorized, not yet implemented.**
 
-Phase 2 checklist (2026-11-15): User and Task aggregates, value objects, local invariants, unit tests and architecture tests implemented; complete Gradle check and existing PostgreSQL integration tests passed. Persistence-level uniqueness, owner integrity and optimistic concurrency, aggregate reconstitution, credential handling and authorization are deferred to their respective later phases. Phase 3 is not authorized.
+2026-11-15: Phase 2 approved and Phase 3 authorized. Persistence adapters, database constraints, aggregate reconstitution, concurrency verification and documentation remain outstanding.
+
+Phase 2 checklist (2026-11-15): User and Task aggregates, value objects, local invariants, unit tests and architecture tests implemented; complete Gradle check and existing PostgreSQL integration tests passed. Persistence-level uniqueness, owner integrity and optimistic concurrency, aggregate reconstitution, credential handling and authorization are deferred to their respective later phases.
 
 2026-11-15: Phase 1 was approved by the user. Compose started PostgreSQL 17 and reported a healthy service; its isolated test resources were removed. Phase 2 domain modeling is authorized.
 
