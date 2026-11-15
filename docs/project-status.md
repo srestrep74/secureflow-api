@@ -1,6 +1,8 @@
 # Project Status
 
-2026-11-15: Phase 4.4 implements ADR-0005 operator bootstrap, the PostgreSQL guard and reusable last-administrator policy. `spotlessApply`, `spotlessCheck`, and `clean check bootJar --no-daemon` passed: 49 tests, including eight bootstrap integration tests and 11 architecture rules. Concurrent transactions were observed waiting on the guard before one promotion and one rejection. Actual database unavailability, rollback, command startup and idempotency were exercised. Future administrative mutations must adopt the guard and policy; direct database writes bypass them. Phase 5 is not authorized or started.
+2026-11-15: Phase 5.1A implements opt-in external RSA key loading and Spring Security JOSE RS256 encoding and decoding, with a single trusted key identifier. `spotlessApply`, `spotlessCheck` and `clean check --no-daemon` passed; 55 tests ran with no failures or skips, including six cryptographic configuration tests and existing PostgreSQL integration tests. No HTTP JWT authentication, complete claims validation, session checks or authorization is implemented. Phase 5.1B remains unstarted. See [JWT validation](jwt-validation-flow.md) and [key operations](security-decisions.md).
+
+2026-11-15: Phase 4.4 implements ADR-0005 operator bootstrap, the PostgreSQL guard and reusable last-administrator policy. `spotlessApply`, `spotlessCheck`, and `clean check bootJar --no-daemon` passed: 49 tests, including eight bootstrap integration tests and 11 architecture rules. Concurrent transactions were observed waiting on the guard before one promotion and one rejection. Actual database unavailability, rollback, command startup and idempotency were exercised. Future administrative mutations must adopt the guard and policy; direct database writes bypass them. At that point Phase 5 was not authorized or started.
 
 2026-11-15: Phase 4.3 programmatic credential authentication implemented. `spotlessApply`, `spotlessCheck` and `clean check --no-daemon` passed; 40 tests ran, including three PostgreSQL authentication integration tests, one provider failure/delegation test and 11 architecture rules. The database outage was simulated at the repository boundary, not exercised against an unavailable PostgreSQL server. HTTP login and token issuance remain unimplemented; Phase 4.4 requires separate authorization.
 
@@ -8,7 +10,7 @@
 
 2026-11-15: Phase 4.2A registration application work implemented. Spotless and `clean check --no-daemon` passed: 30 tests, including three PostgreSQL registration tests and eight architecture checks. A credential constraint failure rolled back user and role creation; registration then succeeded with the same identity. HTTP registration remains Phase 4.2B; login remains outside this scope.
 
-**Status: Phase 4.4 administrator bootstrap implemented and verified; Phase 5 remains gated.**
+**Status: Phase 5.1A implemented and verified; Phase 5.1B remains unstarted.**
 
 2026-11-15: Phase 3 and Spotless approved. Phase 4.1 adds Argon2id hashing and a credential table linked to existing users. `spotlessApply`, `spotlessCheck` and `clean check --no-daemon` passed; 27 tests ran, including three credential integration tests and eight architecture rules. PostgreSQL Testcontainers verified migration V3 and credential constraints. Registration, login and protected administrator bootstrap remain outstanding; JWT and refresh belong to Phase 5. Production hashing costs require deployment benchmarking.
 
