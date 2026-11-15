@@ -1,11 +1,15 @@
 package com.secureflow.identity.web;
 
+import com.secureflow.identity.application.AuthenticationUnavailableException;
+import com.secureflow.identity.application.InvalidCredentialsException;
 import com.secureflow.shared.application.IntegrityConflictException;
+import jakarta.servlet.http.HttpServletRequest;
 import org.hibernate.exception.ConstraintViolationException;
 import org.springframework.dao.DataAccessResourceFailureException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.web.HttpMediaTypeNotSupportedException;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -13,6 +17,16 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 @RestControllerAdvice
 class RegistrationErrors {
+    @ExceptionHandler(InvalidCredentialsException.class)
+    ProblemDetail invalidCredentials(Exception exception) {
+        return problem(HttpStatus.UNAUTHORIZED, "Invalid credentials");
+    }
+
+    @ExceptionHandler(HttpMediaTypeNotSupportedException.class)
+    ProblemDetail unsupportedMedia(Exception exception) {
+        return problem(HttpStatus.UNSUPPORTED_MEDIA_TYPE, "Unsupported media type");
+    }
+
     @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
     ProblemDetail methodNotAllowed(Exception exception) {
         return problem(HttpStatus.METHOD_NOT_ALLOWED, "Method not allowed");
@@ -23,8 +37,12 @@ class RegistrationErrors {
         MethodArgumentNotValidException.class,
         HttpMessageNotReadableException.class
     })
-    ProblemDetail invalid(Exception exception) {
-        return problem(HttpStatus.BAD_REQUEST, "Invalid registration request");
+    ProblemDetail invalid(Exception exception, HttpServletRequest request) {
+        if (exception instanceof IllegalArgumentException
+                && request.getRequestURI().equals(request.getContextPath() + "/api/v1/auth/login")) {
+            return problem(HttpStatus.INTERNAL_SERVER_ERROR, "Internal server error");
+        }
+        return problem(HttpStatus.BAD_REQUEST, "Invalid request");
     }
 
     @ExceptionHandler(IntegrityConflictException.class)
@@ -39,7 +57,7 @@ class RegistrationErrors {
         return problem(HttpStatus.INTERNAL_SERVER_ERROR, "Internal server error");
     }
 
-    @ExceptionHandler(DataAccessResourceFailureException.class)
+    @ExceptionHandler({DataAccessResourceFailureException.class, AuthenticationUnavailableException.class})
     ProblemDetail unavailable(Exception exception) {
         return problem(HttpStatus.SERVICE_UNAVAILABLE, "Service temporarily unavailable");
     }

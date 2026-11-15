@@ -41,3 +41,7 @@ Phase 5.2 uses a 256-bit random opaque secret and SHA-256 digest, not a refresh 
 ## Transactional login (Phase 5.3A)
 
 Credential verification precedes a new transaction that locks and reloads the user, persists the family and SHA-256 refresh digest, and signs the JWT before commit. The application returns credentials only after commit. Commands and results redact secrets in their string representations. The locking contract requires all security-state mutations to update the user row atomically with their changes; direct role-table writes that bypass that contract are unsupported. Database commit cannot guarantee delivery of a future HTTP response; expiration bounds abandoned sessions and a later cleanup mechanism is required. No online JWT state validation or durable catalog version exists yet.
+
+## HTTP login operational requirements
+
+JWT login is opt-in and requires external valid RSA key configuration; there is no fallback key. TLS must be enforced at the deployment boundary. Avoid recording request or response bodies, credentials and tokens in access logs or traces. Rate limiting and other login-abuse controls remain required before production deployment. OpenAPI must be explicitly enabled and restricted in production. Token responses use no-store and no-cache headers; no authentication cookie or HTTP session is created.

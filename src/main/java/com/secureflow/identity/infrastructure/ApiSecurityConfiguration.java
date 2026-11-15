@@ -15,6 +15,7 @@ class ApiSecurityConfiguration {
     @Bean
     SecurityFilterChain apiSecurity(
             HttpSecurity http,
+            @Value("${secureflow.jwt.enabled:false}") boolean loginEnabled,
             @Value("${springdoc.api-docs.enabled:false}") boolean docsEnabled,
             @Value("${springdoc.swagger-ui.enabled:false}") boolean uiEnabled)
             throws Exception {
@@ -27,6 +28,9 @@ class ApiSecurityConfiguration {
                 .authorizeHttpRequests(auth -> {
                     auth.requestMatchers(HttpMethod.POST, "/api/v1/auth/register")
                             .permitAll();
+                    if (loginEnabled)
+                        auth.requestMatchers(HttpMethod.POST, "/api/v1/auth/login")
+                                .permitAll();
                     auth.requestMatchers(HttpMethod.GET, "/actuator/health").permitAll();
                     if (docsEnabled)
                         auth.requestMatchers(HttpMethod.GET, "/v3/api-docs", "/v3/api-docs/**")

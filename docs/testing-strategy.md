@@ -19,3 +19,7 @@ Phase 5.2 adds PostgreSQL Testcontainers coverage for session persistence, diges
 ## Phase 5.3A
 
 Login integration tests exercise real Spring Security authentication, PostgreSQL persistence, and RS256 signing and decoding with test-only generated keys. They cover invalid credentials, disabled users, digest storage, server-derived claims, signing rollback, a database uniqueness failure and a stale authentication result followed by deactivation. Full concurrent security mutation, deferred commit failure and HTTP response delivery are not exercised by these tests.
+
+## Phase 5.3B HTTP verification
+
+HTTP integration coverage uses PostgreSQL Testcontainers, the real credential provider, ephemeral RSA keys and the JWT decoder. It checks token claims and persisted session and digest, generic credential failures, input rejection, cache headers, stateless behavior and denial of protected routes. A dependency double does not demonstrate a real database outage; distinguish simulated failures from actual unavailability in test reports.

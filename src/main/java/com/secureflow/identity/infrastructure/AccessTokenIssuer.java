@@ -9,7 +9,8 @@ import org.springframework.security.oauth2.jose.jws.SignatureAlgorithm;
 import org.springframework.security.oauth2.jwt.*;
 
 final class AccessTokenIssuer {
-    static final Duration LIFETIME = Duration.ofMinutes(5);
+    static final Duration LIFETIME =
+            Duration.ofSeconds(com.secureflow.identity.application.LoginResult.ACCESS_TOKEN_LIFETIME_SECONDS);
     private final JwtEncoder encoder;
     private final JwtClaimsProperties properties;
     private final String keyId;

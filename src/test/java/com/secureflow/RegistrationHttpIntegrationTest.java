@@ -128,6 +128,21 @@ class RegistrationHttpIntegrationTest {
     }
 
     @Test
+    void disabledJwtDeniesLoginWithoutCreatingSessions() throws Exception {
+        try (var client = HttpClient.newHttpClient()) {
+            var request = HttpRequest.newBuilder(URI.create("http://localhost:" + port + "/api/v1/auth/login"))
+                    .header("Content-Type", "application/json")
+                    .POST(HttpRequest.BodyPublishers.ofString("{\"identifier\":\"nobody\",\"password\":\"secret\"}"))
+                    .build();
+            assertThat(client.send(request, HttpResponse.BodyHandlers.ofString())
+                            .statusCode())
+                    .isIn(401, 403, 404);
+            assertThat(jdbc.queryForObject("select count(*) from session_families", Integer.class))
+                    .isZero();
+        }
+    }
+
+    @Test
     void bootstrapIsNotPubliclyAccessible() throws Exception {
         try (var client = HttpClient.newHttpClient()) {
             var request = HttpRequest.newBuilder(URI.create("http://localhost:" + port + "/api/v1/admin/bootstrap"))

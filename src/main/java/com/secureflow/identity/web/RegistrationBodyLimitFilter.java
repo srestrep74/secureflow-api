@@ -22,7 +22,8 @@ class RegistrationBodyLimitFilter extends OncePerRequestFilter {
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
         return !request.getMethod().equals("POST")
-                || !request.getRequestURI().equals(request.getContextPath() + "/api/v1/auth/register");
+                || !(request.getRequestURI().equals(request.getContextPath() + "/api/v1/auth/register")
+                        || request.getRequestURI().equals(request.getContextPath() + "/api/v1/auth/login"));
     }
 
     @Override
@@ -32,8 +33,7 @@ class RegistrationBodyLimitFilter extends OncePerRequestFilter {
         if (body.length > MAX_BYTES) {
             response.setStatus(400);
             response.setContentType("application/problem+json");
-            response.getWriter()
-                    .write("{\"status\":400,\"title\":\"Bad Request\",\"detail\":\"Invalid registration request\"}");
+            response.getWriter().write("{\"status\":400,\"title\":\"Bad Request\",\"detail\":\"Invalid request\"}");
             return;
         }
         chain.doFilter(

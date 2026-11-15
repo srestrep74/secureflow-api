@@ -10,7 +10,7 @@ The issuer receives an existing user UUID, session-family UUID, versions and rol
 
 A verified token is not an authorization decision. HTTP Resource Server integration, current account status, session ownership/revocation and matching the user and catalog versions against PostgreSQL are not implemented. ADR-0004 requires a `SecurityStatePort` read before accepting the snapshot; failure or stale state must not fall back to signed claims. No persistence lookup occurs in Phase 5.1B.
 
-The persisted family UUID is compatible with the `sid` claim. A valid signature alone cannot establish that the session is active. Phase 5.4 must query the primary database for user and family state and the durable catalog version; initialize the singleton catalog at version 1 in that phase and require agreement with the binary. No PostgreSQL catalog is initialized here. Issuance remains disconnected from login and must only be wired to persisted sessions after transactional user and catalog checks.
+The persisted family UUID is compatible with the `sid` claim. A valid signature alone cannot establish that the session is active. Phase 5.4 must query the primary database for user and family state and the durable catalog version; initialize the singleton catalog at version 1 in that phase and require agreement with the binary. No PostgreSQL catalog is initialized here. Phase 5.3A connected issuance to the transactional session login flow; durable catalog checks remain future work.
 
 ## Phase 5.3A issuance
 
