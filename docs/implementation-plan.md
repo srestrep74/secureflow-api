@@ -1,5 +1,7 @@
 # Implementation Plan
 
+2026-11-15: Phase 5.3A implements application-level transactional login and session-bound access and refresh issuance. `spotlessApply`, `spotlessCheck` and `clean check --no-daemon` passed: 104 tests, including three PostgreSQL login integration tests, with no failures or skips. Login locks and reloads the user, persists the family and digest, signs before commit, and returns only after commit. Catalog version 1 is transitional; per-request freshness enforcement, HTTP login (Phase 5.3B), refresh rotation and cleanup remain unimplemented. Concurrent security mutation and commit-failure injection have not been exercised by the new tests.
+
 2026-11-15: Phase 5.2 implements PostgreSQL session families and opaque refresh-token digest storage. `spotlessApply`, `spotlessCheck` and `clean check --no-daemon` passed: 101 tests, including three session persistence integration tests and 11 architecture rules, with no failures or skips. Creation is transactional; revocation is idempotent. Rotation, replay handling, cleanup, login, HTTP bearer authentication and PostgreSQL security-state validation remain unimplemented. Catalog version 1 requires durable initialization in Phase 5.4. Phase 5.3 has not started.
 
 2026-11-15: Phase 5.1B implements RS256 access-token construction and structural claims validation. `spotlessApply`, `spotlessCheck` and `clean check --no-daemon` passed: 98 tests, including 43 claims contract cases, six cryptographic configuration tests and 11 architecture rules, with no failures or skips. HTTP bearer authentication, PostgreSQL security-state checks, persistent sessions and refresh remain unimplemented. Catalog version 1 must be coordinated with its future durable migration. See [JWT validation](jwt-validation-flow.md).
@@ -14,7 +16,7 @@
 
 2026-11-15: Phase 4.2A implements the transactional registration use case; the HTTP adapter and its security configuration remain Phase 4.2B.
 
-**Status: Phase 5.2 implemented and verified; Phase 5.3 has not started.**
+**Status: Phase 5.3A implemented and verified; Phase 5.3B has not started.**
 
 2026-11-15: Phase 3 and formatting approved. Phase 4.1 adds an Argon2id encoder, credential persistence port and PostgreSQL migration. Registration, authentication and operator bootstrap remain outstanding. JWT and refresh remain Phase 5.
 

@@ -15,3 +15,7 @@ Phase 4.3 tests exercise real DaoAuthenticationProvider and Argon2id with Postgr
 Phase 5.1B tests real RS256 signing and decoding using generated keys and a fixed clock. Parameterized negative cases cover missing, malformed and incorrect claims, timestamp ordering and lifetime, unsupported versions, role and permission mismatch, and key ID. Existing cryptographic tests cover wrong keys, payload tampering, unsupported algorithms and key configuration. These tests do not exercise HTTP bearer authentication or PostgreSQL security state.
 
 Phase 5.2 adds PostgreSQL Testcontainers coverage for session persistence, digest lookup, rollback on duplicate digest, foreign keys and idempotent revocation. Rotation, replay behavior, online security-state validation and retention cleanup require later integration tests.
+
+## Phase 5.3A
+
+Login integration tests exercise real Spring Security authentication, PostgreSQL persistence, and RS256 signing and decoding with test-only generated keys. They cover invalid credentials, disabled users, digest storage, server-derived claims, signing rollback, a database uniqueness failure and a stale authentication result followed by deactivation. Full concurrent security mutation, deferred commit failure and HTTP response delivery are not exercised by these tests.
