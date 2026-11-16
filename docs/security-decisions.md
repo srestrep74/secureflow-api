@@ -1,8 +1,10 @@
-Ã¯Â»Â¿# Security Decisions
+# Security Decisions
 
-**Status: Phase 0 approved on 2026-11-15; later implementation remains phase-gated.**
+**Current status:** Phase 5 is functionally complete and approved; Phase 6 is not implemented. Phase-specific descriptions below record the state at that phase unless they explicitly describe the current implementation. See [project status](project-status.md) and [the closure audit](phase-5-security-audit.md).
 
-Accepted decisions specify Argon2id, RS256, five-minute access JWT, online security and session state, opaque refresh rotation, explicit HTTPS transport and deny-by-default authorization. PostgreSQL unavailability must fail closed. Online validation and the complete token contract remain scheduled for later phases.
+**Historical baseline:** Phase 0 was approved on 2026-11-15; later phases have separate approval gates.
+
+Accepted decisions specify Argon2id, RS256, five-minute access JWT, online security and session state, opaque refresh rotation, explicit HTTPS transport and deny-by-default authorization. PostgreSQL unavailability must fail closed. Online validation and the complete token contract are implemented in Phase 5; operational production hardening remains deferred.
 
 See the [consolidated Phase 0 design](phase-0-design.md) for the complete contract, trade-offs and approval gate.
 
@@ -32,15 +34,15 @@ openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:3072 -out private.pem
 openssl pkey -in private.pem -pubout -out public.pem
 ```
 
-Set the three key properties to the resulting absolute paths and an identifier, and set the enabled property to `true`; restrict file permissions using the operating system. Development keys must not be used in production. Production must provision a persistent key pair securely and coordinate key replacement; replacing it immediately invalidates tokens signed with the previous key. Issuance from login and online-state validation remain unimplemented.
+Set the three key properties to the resulting absolute paths and an identifier, and set the enabled property to `true`; restrict file permissions using the operating system. Development keys must not be used in production. Production must provision a persistent key pair securely and coordinate key replacement; replacing it immediately invalidates tokens signed with the previous key. At Phase 5.1A, issuance from login and online-state validation were not yet implemented; both were added in later Phase 5 work.
 
-Phase 5.1B additionally requires `secureflow.jwt.issuer` and `secureflow.jwt.audience` when enabled. Set them to deployment-controlled trusted values shared by issuer and verifier. Tokens use a five-minute lifetime and the approved maximum 30-second clock tolerance; synchronization of host clocks remains an operational requirement. Structural validation is implemented, but the PostgreSQL authority freshness and revocation checks are not. No token issuance is exposed over HTTP.
+Phase 5.1B additionally requires `secureflow.jwt.issuer` and `secureflow.jwt.audience` when enabled. Set them to deployment-controlled trusted values shared by issuer and verifier. Tokens use a five-minute lifetime and the approved maximum 30-second clock tolerance; synchronization of host clocks remains an operational requirement. At Phase 5.1B, PostgreSQL authority freshness and revocation checks and HTTP issuance had not yet been added; later Phase 5 work implemented them.
 
 Phase 5.2 uses a 256-bit random opaque secret and SHA-256 digest, not a refresh JWT. Passwords require Argon2id because human choices have low entropy; randomly generated refresh credentials resist guessing without an expensive password hash. Never log or persist raw secrets or expose digests. Database history retains consumed records; cleanup is not yet implemented.
 
 ## Transactional login (Phase 5.3A)
 
-Credential verification precedes a new transaction that locks and reloads the user, persists the family and SHA-256 refresh digest, and signs the JWT before commit. The application returns credentials only after commit. Commands and results redact secrets in their string representations. The locking contract requires all security-state mutations to update the user row atomically with their changes; direct role-table writes that bypass that contract are unsupported. Database commit cannot guarantee delivery of a future HTTP response; expiration bounds abandoned sessions and a later cleanup mechanism is required. No online JWT state validation or durable catalog version exists yet.
+Credential verification precedes a new transaction that locks and reloads the user, persists the family and SHA-256 refresh digest, and signs the JWT before commit. The application returns credentials only after commit. Commands and results redact secrets in their string representations. The locking contract requires all security-state mutations to update the user row atomically with their changes; direct role-table writes that bypass that contract are unsupported. Database commit cannot guarantee delivery of a future HTTP response; expiration bounds abandoned sessions and a later cleanup mechanism is required. At Phase 5.3A, online JWT state validation and the durable catalog version were not yet implemented; later Phase 5 work added them.
 
 ## HTTP login operational requirements
 
@@ -58,7 +60,7 @@ The Resource Server is enabled only with the existing JWT activation and valid e
 
 ## Phase 5.5A rotation and replay
 
-Opaque 256-bit refresh credentials are persisted only as SHA-256 digests. The unique digest index supports bounded lookup; the partial unique index enforces one unconsumed token per family. User then family row locks serialize all compliant writers across application instances. This order also serializes separate families of one user; lock waits and throughput have not been measured. Consumed history is retained. No cache or process-local lock participates. Strict replay revokes a known unexpired family even for simultaneous legitimate retries or a lost response. Typed outcomes allow revocation to commit without an unchecked exception rolling it back; failures during consumption, insertion, signing or commit roll back and fail closed. A database outage was not separately exercised for refresh. Direct SQL writers that bypass the locking protocol remain unsupported.
+Opaque 256-bit refresh credentials are persisted only as SHA-256 digests. The unique digest index supports bounded lookup; the partial unique index enforces one unconsumed token per family. User then family row locks serialize all compliant writers across application instances. This order also serializes separate families of one user; lock waits and throughput have not been measured. Consumed history is retained. No cache or process-local lock participates. Strict replay revokes a known unexpired family even for simultaneous legitimate retries or a lost response. Typed outcomes allow revocation to commit without an unchecked exception rolling it back; failures during consumption, insertion, signing or commit roll back and fail closed. The later closure audit exercised refresh during a real isolated PostgreSQL outage. Direct SQL writers that bypass the locking protocol remain unsupported.
 
 ## Refresh deployment considerations
 
@@ -66,7 +68,7 @@ Require HTTPS in deployment. Provide login and refresh abuse protection and rate
 
 ## Current-session logout
 
-Logout uses the existing user-then-family PostgreSQL row-lock protocol and family revocation. Idempotent repeated revocation preserves the first timestamp without updating the row. Invalid context and infrastructure failure are distinct application outcomes. Session-specific revocation does not change account security version or roles; direct writers that bypass the protocol remain unsupported. The endpoint and principal extraction remain Phase 5.6B.
+Logout uses the existing user-then-family PostgreSQL row-lock protocol and family revocation. Idempotent repeated revocation preserves the first timestamp without updating the row. Invalid context and infrastructure failure are distinct application outcomes. Session-specific revocation does not change account security version or roles; direct writers that bypass the protocol remain unsupported. The endpoint and principal extraction were added in Phase 5.6B.
 
 Phase 5.6B keeps Spring Security's default logout disabled and exposes an explicitly authenticated MVC endpoint. It performs persistent family revocation rather than relying on request-context clearing; it creates no HTTP session or authentication cookie. Failures are sanitized: invalid state is 401, classified dependency unavailability 503, and unexpected failures 500. This does not provide logout from all devices, token erasure on clients, or retroactive cancellation of already authenticated requests.
 

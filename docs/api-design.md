@@ -1,6 +1,8 @@
 # API Design
 
-**Status: Phase 0 approved on 2026-11-15; later implementation remains phase-gated.**
+**Current status:** Phase 5 is functionally complete and approved; Phase 6 is not implemented. Phase-specific descriptions below record the state at that phase unless they explicitly describe the current implementation. See [project status](project-status.md) and [the closure audit](phase-5-security-audit.md).
+
+**Historical baseline:** Phase 0 was approved on 2026-11-15; later phases have separate approval gates.
 
 Use versioned JSON over HTTPS. Register, login, refresh and logout under /api/v1/auth, plus /me, task and administrative resources. Derive task owner from actor; clients provide version for mutation. Define ProblemDetail, bounded paging, 401/403/404 and 409 as in the consolidated design. Restrict deployed Swagger.
 
@@ -22,7 +24,7 @@ With JWT enabled, GET /api/v1/me requires a valid, current Bearer access token a
 
 ## Phase 5.5B refresh
 
-With JWT enabled, POST /api/v1/auth/refresh accepts only JSON refresh_token (maximum 256 characters; body maximum 4096 bytes). Success returns the login token fields with no-store and no-cache headers. Invalid structure yields 400, unsupported media 415, invalid credentials 401, classified dependency unavailability 503 and unexpected failures 500. No access JWT is needed. Use HTTPS and omit Authorization: an expired Bearer header is rejected before the controller. Logout is not implemented.
+With JWT enabled, POST /api/v1/auth/refresh accepts only JSON refresh_token (maximum 256 characters; body maximum 4096 bytes). Success returns the login token fields with no-store and no-cache headers. Invalid structure yields 400, unsupported media 415, invalid credentials 401, classified dependency unavailability 503 and unexpected failures 500. No access JWT is needed. Use HTTPS and omit Authorization: an expired Bearer header is rejected before the controller. Current-family logout is implemented as described below.
 
 ## Phase 5.6B: HTTP current-session logout
 

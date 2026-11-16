@@ -1,6 +1,6 @@
 # Phase 5 Security and Integration Closure Audit
 
-Date: 2026-11-15. Scope: committed Phase 5.6B and the focused corrections and regression tests in this audit. Phase 6 was not started.
+Date: 2026-11-15. The user subsequently approved Phase 5 functional closure. Scope: committed Phase 5.6B and the focused corrections and regression tests in this audit. Phase 6 was not started.
 
 ## Executive summary
 
@@ -80,4 +80,4 @@ Current deployment also needs restricted database writes, credential/body log re
 
 ## Closure recommendation
 
-`spotlessApply`, `spotlessCheck` and `clean check --no-daemon` succeeded; 150 tests ran with zero failures, errors or skips. Phase 5 can be treated as functionally complete and recommended for user approval before Phase 6. Correctness is supported by code review and targeted integration evidence, bounded by the untested scenarios above. Production readiness requires the operational work listed here and deployment-specific verification.
+`spotlessApply`, `spotlessCheck` and `clean check --no-daemon` succeeded; 150 tests ran with zero failures, errors or skips. Phase 5 can be treated as functionally complete and formally approved by the user; Phase 6 requires separate authorization. Correctness is supported by code review and targeted integration evidence, bounded by the untested scenarios above. Production readiness requires the operational work listed here and deployment-specific verification.

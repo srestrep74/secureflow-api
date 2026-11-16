@@ -1,8 +1,10 @@
 # Technology compatibility evidence
 
+**Current status:** Phase 5 is functionally complete and approved; Phase 6 is not implemented. Phase-specific descriptions below record the state at that phase unless they explicitly describe the current implementation. See [project status](project-status.md) and [the closure audit](phase-5-security-audit.md).
+
 **Status: Phase 1 build and integration verification recorded below.** Evidence consulted 2026-11-15. Online pages may move to newer patch versions; recheck before future upgrades.
 
-Phase 1 verification on 2026-11-15: Amazon Corretto 25.0.3, Gradle 9.9.1 and Spring Boot 4.0.9 resolved and compiled; `check` passed with PostgreSQL Testcontainers 2.0.5. The resolved runtime includes Spring Data JPA 4.0.8, Flyway 11.14.1, PostgreSQL JDBC 42.7.14 and springdoc 3.0.3. The integration test verified the OpenAPI endpoint when explicitly enabled. JUnit Jupiter 6.0.3 is Boot-managed. ArchUnit is not included: the current foundation has no domain or application packages to check. Compose startup was not tested. Other historical notes below describe pre-build research.
+Phase 1 verification on 2026-11-15: Amazon Corretto 25.0.3, Gradle 9.9.1 and Spring Boot 4.0.9 resolved and compiled; `check` passed with PostgreSQL Testcontainers 2.0.5. The resolved runtime includes Spring Data JPA 4.0.8, Flyway 11.14.1, PostgreSQL JDBC 42.7.14 and springdoc 3.0.3. The integration test verified the OpenAPI endpoint when explicitly enabled. JUnit Jupiter 6.0.3 is Boot-managed. At Phase 1 ArchUnit was not yet included and Compose startup was not yet tested; later phases added ArchUnit 1.4.1 and a Compose smoke test. Other historical notes below describe pre-build research.
 
 | Component | Candidate / evidence | Remaining verification |
 |---|---|---|

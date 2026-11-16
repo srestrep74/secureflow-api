@@ -1,5 +1,9 @@
 # Project Status
 
+2026-11-15: The user formally approved Phase 5 functional closure after its security and integration audit. The authentication lifecycle is complete for the educational scope; three Medium findings were corrected and no Critical or High finding was confirmed. Integration coverage includes a real isolated PostgreSQL disruption and recovery. Production hardening is intentionally deferred; Phase 6 has not started. See [audit](phase-5-security-audit.md) and [deferred hardening](production-hardening-backlog.md).
+
+**Historical entries below record the state at each earlier checkpoint.**
+
 2026-11-15: Phase 5 security and integration closure audit completed; functional closure is recommended for approval before Phase 6. Three Medium findings were corrected: incompatible catalog issuance, overbroad authentication failure classification, and transaction-start failure mapping. `spotlessApply`, `spotlessCheck`, and `clean check --no-daemon` passed: 150 tests, zero failures, errors or skips. PostgreSQL 17 was actually paused and recovered; login, refresh, bearer and logout failed closed at the tested boundaries. Production hardening remains outstanding. See [audit report](phase-5-security-audit.md). Phase 6 has not started.
 
 2026-11-15: Phase 5.6B implements authenticated HTTP current-family logout, trusted principal adaptation, sanitized errors and opt-in OpenAPI. `spotlessApply`, `spotlessCheck` and `clean check --no-daemon` passed: 146 tests, no failures or skips, including 11 architecture rules, PostgreSQL HTTP lifecycle and isolation, deferred commit failure, existing refresh/logout concurrency and replay tests. Dependency outages were simulated; a running PostgreSQL outage and deployed HTTPS were not tested. In-flight authenticated requests may complete after revocation. Phase 5 requires remaining operational hardening and review before closure; Phase 6 has not started.

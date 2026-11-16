@@ -1,8 +1,10 @@
 # Testing Strategy
 
-**Status: Phase 0 approved on 2026-11-15; later implementation remains phase-gated.**
+**Current status:** Phase 5 is functionally complete and approved; Phase 6 is not implemented. Phase-specific descriptions below record the state at that phase unless they explicitly describe the current implementation. See [project status](project-status.md) and [the closure audit](phase-5-security-audit.md).
 
-Phase 3 persistence tests use PostgreSQL 17 Testcontainers and Flyway, real adapters, uniqueness and foreign-key violations, round trips, no-op versions and two coordinated independent transactions. Architecture tests verify dependency direction. HTTP bearer authentication, 401/403/404 and owner filtering, database outage, secret redaction, principal isolation, real PostgreSQL refresh and admin races and rollback-safe revocation remain future work.
+**Historical baseline:** Phase 0 was approved on 2026-11-15; later phases have separate approval gates.
+
+Phase 3 persistence tests use PostgreSQL 17 Testcontainers and Flyway, real adapters, uniqueness and foreign-key violations, round trips, no-op versions and two coordinated independent transactions. Architecture tests verify dependency direction. Subsequent phases added HTTP Bearer, security-state outage, redaction, principal isolation, PostgreSQL refresh and admin races, and rollback-safe revocation tests. Task owner filtering and its HTTP cases remain Phase 6 work.
 
 Verify one indexed security-state statement per authenticated request, no aggregate or role fetch, parameterization and representative execution plans. Exercise role assignment/removal and no-ops, account and credential changes, catalog deployment mismatch, consistent login/refresh snapshots during concurrent role changes, post-commit old-token rejection, session-only revocation, DB 503 and already-authorized request semantics. Separately assert at-most-one rotation and the selected family-revocation replay policy, including simultaneous requests and lost responses.
 
